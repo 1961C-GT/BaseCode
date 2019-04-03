@@ -53,6 +53,13 @@ def process_range(packet):
 
 def process_stats(packet):
     p_cycle, p_from, p_seq, p_hops, p_bat, p_temp, p_heading = packet
+    print("Got stats from node {} (cycle {}, seq {}, {} hops): battery={}V, temp={}C, heading={}º".format(p_from,
+                                                                                                          p_cycle,
+                                                                                                          p_seq,
+                                                                                                          p_hops,
+                                                                                                          p_bat,
+                                                                                                          p_temp,
+                                                                                                          p_heading))
     # TODO: push stats directly into UI backend
 
 
