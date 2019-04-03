@@ -1,43 +1,58 @@
+#!/usr/bin/env python3
+
 import serial
-import struct
+import sys
 
-port = "/dev/tty.usbserial-UUT2"
-ser = serial.Serial(port, 921600)
+import config
 
 
-def main():
-    print("Looking for end of message...")
-    while ser.read(1) != 0x55 and ser.read(1) != 0xAA:
-        pass
-    print("Found end of message.")
+#####################
+# Packet processors #
+#####################
 
-    while True:
-        msg_type = ser.read(1)
+def process_range(packet):
+    print("Got Range packet: {}".format(packet))
+    pass
 
-        if msg_type == 0xA1:
-            print("Message type: Distance")
-            msg_contents = ser.read(17)
-            msg = struct.unpack("IBBdBH", msg_contents)
-            print(msg)
-            pass
-        elif msg_type == 0xA2:
-            print("Message type: Telemetry")
-            msg_contents = ser.read(10)
-            msg = struct.unpack("IBHBH", msg_contents)
-            print(msg)
-            pass
-        elif msg_type == 0xA3:
-            print("Message type: Status")
-            msg_contents = ser.read(16)
-            msg = struct.unpack("IBHHHHBH", msg_contents)
-            print(msg)
-            pass
-        else:
-            # Message type: Invalid
-            print("Detected invalid message type {}!".format(msg_type.encode('hex')))
-            pass
-        # TODO PUSH INTO ALGORITHM
+
+def process_stats(packet):
+    print("Got Stats packet: {}".format(packet))
+    pass
+
+
+PACKET_PROCESSORS = {"Range Packet": process_range, "Stats Packet": process_stats}
+
+
+########
+# Main #
+########
+
+def main(src):
+    src.readline()  # discard first (possibly incomplete) line
+    for line in src:
+        tmp = line.strip().split("|")
+
+        # Make sure we have a valid packet
+        if len(tmp) != 2:
+            continue
+
+        # Check packet type
+        packet_type = tmp[0].strip()
+        if packet_type not in PACKET_PROCESSORS.keys():
+            continue
+
+        # Clean up packet contents
+        packet_contents = tmp[1].strip().split(',')
+        for i in range(len(packet_contents)):
+            packet_contents[i] = packet_contents[i].strip()
+
+        # Pass to packet processor for processing
+        PACKET_PROCESSORS[packet_type](packet_contents)
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) < 2:
+        src = serial.Serial(config.PORT, config.BAUD)
+    else:
+        src = open(sys.argv[1])
+    main(src)
