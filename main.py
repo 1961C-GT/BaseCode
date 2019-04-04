@@ -4,6 +4,8 @@ import serial
 import sys
 import time
 
+from algorithms.helpers.node import Node
+
 import config
 
 #####################
@@ -14,6 +16,14 @@ r_current_cycle = None
 r_cycle_offset = None
 r_cycle_data = []
 r_cycle_history = []
+r_nodes = {
+    0: Node(0, "Base 1", is_base=True, x=600, y=400),
+    1: Node(1, "Base 2", is_base=True, x=600, y=400),
+    2: Node(2, "Node 1"),
+    3: Node(3, "Node 2"),
+    4: Node(4, "Node 3"),
+    5: Node(5, "Node 4"),
+}
 
 
 def process_range(packet):
@@ -48,18 +58,15 @@ def process_range(packet):
         r_cycle_offset = p_cycle - r_current_cycle
         r_cycle_data = []
 
+    print("Got range from {} -> {}: {} (cycle {})".format(p_from, p_to, p_range, r_current_cycle))
     r_cycle_data.append([p_from, p_to, p_range, p_hops, p_seq])
 
 
 def process_stats(packet):
     p_cycle, p_from, p_seq, p_hops, p_bat, p_temp, p_heading = packet
-    print("Got stats from node {} (cycle {}, seq {}, {} hops): battery={}V, temp={}C, heading={}º".format(p_from,
-                                                                                                          p_cycle,
-                                                                                                          p_seq,
-                                                                                                          p_hops,
-                                                                                                          p_bat,
-                                                                                                          p_temp,
-                                                                                                          p_heading))
+    print("Got stats from {}: bat={}V, temp={}C, heading={}º (cycle {}, seq {}, {} hops)".format(p_from, p_bat, p_temp,
+                                                                                                 p_heading, p_cycle,
+                                                                                                 p_seq, p_hops))
     # TODO: push stats directly into UI backend
 
 
@@ -77,6 +84,13 @@ def main(src):
 
     src.readline()  # discard first (possibly incomplete) line
     for line in src:
+
+        try:
+            # Try to decode 'bytes' from serial
+            line = line.decode("utf-8")
+        except AttributeError:
+            # Probably already a 'str' from file
+            pass
 
         tmp = line.strip().split("|")
         line_ctr += 1
@@ -104,7 +118,7 @@ def main(src):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        src = serial.Serial(config.PORT, config.BAUD)
+        data_src = serial.Serial(config.PORT, config.BAUD)
     else:
-        src = open(sys.argv[1])
-    main(src)
+        data_src = open(sys.argv[1])
+    main(data_src)
