@@ -32,9 +32,14 @@ r_nodes = {
     "5": Node("5", "Node 4"),
 }
 
+resolved_ctr = 0
 
-def print_nodes(nodes, a, b):
-    print(nodes, a, b)
+
+def algorithm_callback(nodes, _t, _n):
+    global resolved_ctr
+    for node_id, node in nodes.items():
+        if not node.is_base and node.is_resolved():
+            resolved_ctr += 1
 
 
 def process_range(packet):
@@ -61,7 +66,7 @@ def process_range(packet):
             r_cycle_history.pop()
         r_cycle_history.insert(0, r_cycle_data)
 
-        algorithm(r_nodes)._process(print_nodes)
+        algorithm(r_nodes)._process(algorithm_callback)
 
         # TODO: push r_cycle_history into algorithm
         # TODO: push algorithm results into UI backend
@@ -131,7 +136,9 @@ def main(src):
         # Pass to packet processor for processing
         PACKET_PROCESSORS[packet_type](packet_contents)
 
+    print()
     print("Processed {} lines ({} packets) in {} secs".format(line_ctr, packet_ctr, time.time() - start_time))
+    print("Total non-base node resolutions: {}".format(resolved_ctr))
 
 
 if __name__ == "__main__":
