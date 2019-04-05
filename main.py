@@ -6,6 +6,7 @@ import sys
 import time
 
 from algorithms.helpers.node import Node
+from battery import volts_to_percentage
 
 import config
 
@@ -80,7 +81,8 @@ def process_range(packet):
 
 def process_stats(packet):
     p_cycle, p_from, p_seq, p_hops, p_bat, p_temp, p_heading = packet
-    print("Got stats from {}: bat={}V, temp={}C, heading={}º (cycle {}, seq {}, {} hops)".format(p_from, p_bat, p_temp,
+    p_bat = volts_to_percentage(float(p_bat))
+    print("Got stats from {}: bat={}%, temp={}C, heading={}º (cycle {}, seq {}, {} hops)".format(p_from, p_bat, p_temp,
                                                                                                  p_heading, p_cycle,
                                                                                                  p_seq, p_hops))
     # TODO: push stats directly into UI backend
