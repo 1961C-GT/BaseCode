@@ -6,14 +6,17 @@ import sys
 import time
 
 from algorithms.helpers.node import Node
+from backend import Backend
 from battery import volts_to_percentage
-
 import config
 
 # Load algorithm
 alg_name = 'multi_tri'
 alg_module = importlib.import_module('algorithms.' + alg_name + '.' + alg_name)
 algorithm = getattr(alg_module, alg_name)
+
+# Connect to backend
+backend = Backend()
 
 #####################
 # Packet processors #
@@ -145,8 +148,11 @@ if __name__ == "__main__":
 
     # Load from file if specified, otherwise serial
     if len(sys.argv) < 2:
-        data_src = serial.Serial(config.PORT, config.BAUD)
+        data_src = serial.Serial(config.SERIAL_PORT, config.SERIAL_BAUD)
     else:
         data_src = open(sys.argv[1])
+
+    # Clear out the backend of stale data
+    backend.clear_nodes()
 
     main(data_src)
