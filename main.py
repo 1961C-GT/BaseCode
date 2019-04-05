@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import importlib
 import serial
 import sys
 import time
@@ -7,6 +8,11 @@ import time
 from algorithms.helpers.node import Node
 
 import config
+
+# Load algorithm
+alg_name = 'multi_tri'
+alg_module = importlib.import_module('algorithms.' + alg_name + '.' + alg_name)
+algorithm = getattr(alg_module, alg_name)
 
 #####################
 # Packet processors #
@@ -17,18 +23,23 @@ r_cycle_offset = None
 r_cycle_data = []
 r_cycle_history = []
 r_nodes = {
-    0: Node(0, "Base 1", is_base=True, x=600, y=400),
-    1: Node(1, "Base 2", is_base=True, x=600, y=400),
-    2: Node(2, "Node 1"),
-    3: Node(3, "Node 2"),
-    4: Node(4, "Node 3"),
-    5: Node(5, "Node 4"),
+    "0": Node("0", "Base 1", is_base=True, x=0, y=0),
+    "1": Node("1", "Base 2", is_base=True, x=47000, y=0),
+    "2": Node("2", "Node 1"),
+    "3": Node("3", "Node 2"),
+    "4": Node("4", "Node 3"),
+    "5": Node("5", "Node 4"),
 }
+
+
+def print_nodes(nodes, a, b):
+    print(nodes, a, b)
 
 
 def process_range(packet):
     p_cycle, p_from, p_to, p_seq, p_hops, p_range = packet
     p_cycle = int(p_cycle)
+    p_range = int(p_range)
 
     # START code to discard initial cycle
     global r_current_cycle, r_cycle_offset, r_cycle_data, r_cycle_history
@@ -49,6 +60,8 @@ def process_range(packet):
             r_cycle_history.pop()
         r_cycle_history.insert(0, r_cycle_data)
 
+        algorithm(r_nodes)._process(print_nodes)
+
         # TODO: push r_cycle_history into algorithm
         # TODO: push algorithm results into UI backend
         # we might want to do this in a separate thread
@@ -57,8 +70,11 @@ def process_range(packet):
         r_current_cycle += 1
         r_cycle_offset = p_cycle - r_current_cycle
         r_cycle_data = []
+        for node_id, node in r_nodes.items():
+            node.start_new_cycle()
 
     print("Got range from {} -> {}: {} (cycle {})".format(p_from, p_to, p_range, r_current_cycle))
+    r_nodes[p_from].add_measurement(r_nodes[p_to], p_range)
     r_cycle_data.append([p_from, p_to, p_range, p_hops, p_seq])
 
 
@@ -117,8 +133,11 @@ def main(src):
 
 
 if __name__ == "__main__":
+
+    # Load from file if specified, otherwise serial
     if len(sys.argv) < 2:
         data_src = serial.Serial(config.PORT, config.BAUD)
     else:
         data_src = open(sys.argv[1])
+
     main(data_src)

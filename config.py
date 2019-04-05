@@ -3,10 +3,10 @@
 ######################
 
 PORT = "/dev/tty.usbserial-UUT2"
-BAUD = 921600
+BAUD = 256000  # 921600
 
 ####################
 # Algorithm config #
 ####################
 
-MAX_HISTORY = 3  # How many historical cycles to feed to algorithm
+MAX_HISTORY = 20  # How many historical cycles to feed to algorithm
