@@ -1,10 +1,16 @@
+#!/usr/bin/env python3
+
 import math
+
 import tkinter as tk
 from tkinter import font
 from tkinter import *
 from canvasvg import *
 from multiprocessing import Process, Pipe
-from fake_main import FakeMain
+
+from main import Main
+from backend import Backend
+
 
 class ResizingCanvas(Canvas):
     def __init__(self,parent,**kwargs):
@@ -36,11 +42,12 @@ class ResizingCanvas(Canvas):
         self.scan_dragto(int(self.x_pos/10),int(self.y_pos/10))
 
 class EngDisplay:
-    def __init__(self):
+    def __init__(self, src=None):
+        self.backend = Backend()
         self.parent_conn, self.child_conn = Pipe()
-        self.data_src = "blah"
-        self.fm = FakeMain(self.data_src, self.child_conn)
-        self.proc = Process(target=self.fm.run)
+        self.data_src = src
+        self.main = Main(src, multi_pipe=self.child_conn)
+        self.proc = Process(target=self.main.run)
         self.proc.start()
         # self.width = 700
         # self.height = 700
@@ -65,13 +72,13 @@ class EngDisplay:
         # self.canvas.grid(column=0, row=0, columnspan=30)
         self.canvas.create_rectangle(-2500, -300, 3000, 4250, fill="#22242a")
         # Add menu
-        self.menubar = Menu(self.window)
-        self.filemenu = Menu(self.menubar, tearoff=0)
-        self.filemenu.add_command(label="Exit", command=self.window.quit, accelerator="Cmd+q")
-        self.menubar.add_cascade(label="File", menu=self.filemenu)
-        self.helpmenu = Menu(self.menubar, tearoff=0)
-        self.menubar.add_cascade(label="Help", menu=self.helpmenu)
-        self.window.config(menu=self.menubar)
+        self.menu_bar = Menu(self.window)
+        self.file_menu = Menu(self.menu_bar, tearoff=0)
+        self.file_menu.add_command(label="Exit", command=self.window.quit, accelerator="Cmd+q")
+        self.menu_bar.add_cascade(label="File", menu=self.file_menu)
+        self.help_menu = Menu(self.menu_bar, tearoff=0)
+        self.menu_bar.add_cascade(label="Help", menu=self.help_menu)
+        self.window.config(menu=self.menu_bar)
 
         # Bind these functions to motion, press, and release
         self.canvas.bind('<Motion>', self.measure)
@@ -88,7 +95,7 @@ class EngDisplay:
 
         self.mainLoop()
 
-    def mainLoop(self):
+    def main_loop(self):
         while True:
             try:
                 self.window.update_idletasks()
@@ -98,15 +105,21 @@ class EngDisplay:
             if self.parent_conn.poll():
                 msg = self.parent_conn.recv()
                 print(msg)
-                if msg == 'Test!':
-                    self.create_circle(100, 100, 100)
-
+                if type(msg) == list and len(msg) > 0:
+                    if msg[0] == Backend.CLEAR_NODES:
+                        self.backend.clear_nodes()
+                    else:
+                        print("Received unrecognized command:")
+                        print(msg)
+                else:
+                    if msg == 'Test!':
+                        self.create_circle(100, 100, 100)
 
     # Interactive features
 
     def measure(self, event):
         # Check to see if we are measuring
-        if self.measuring == True:
+        if self.measuring:
             # Try to remove the old elements
             try:
                 event.widget.delete(self.cur_line)
@@ -115,27 +128,27 @@ class EngDisplay:
                 pass
             # Calculate the rotation between the two points
             rotation = 180 - math.degrees(math.atan2(self.start_pos[1] - event.y,
-                                                    self.start_pos[0] - event.x))
+                                                     self.start_pos[0] - event.x))
             # Normalize the rotation
-            if rotation > 90 and rotation < 270:
+            if 90 < rotation < 270:
                 rotation -= 180
             # Convert to radians
             rrotation = math.radians(rotation)
             # Calculate mid point + rotation offset
-            midx = (self.start_pos[0] + event.x)/2 - math.sin(rrotation)*10
-            midy = (self.start_pos[1] + event.y)/2 - math.cos(rrotation)*10
+            midx = (self.start_pos[0] + event.x) / 2 - math.sin(rrotation) * 10
+            midy = (self.start_pos[1] + event.y) / 2 - math.cos(rrotation) * 10
             # Calculate distance
             dist_num = math.sqrt(
-                (self.start_pos[0] - event.x)**2 + (self.start_pos[1] - event.y)**2) / self.universal_scale
+                (self.start_pos[0] - event.x) ** 2 + (self.start_pos[1] - event.y) ** 2) / self.universal_scale
             # Calculate distance string
             dist = '{:.0f}ft'.format(dist_num)
             # Create the text
             self.cur_line_txt = event.widget.create_text(midx, midy, text=dist,
-                                                    fill="white", font=font.Font(family='Courier New', size=14),
-                                                    justify=tk.LEFT, angle=rotation)
+                                                         fill="white", font=font.Font(family='Courier New', size=14),
+                                                         justify=tk.LEFT, angle=rotation)
             # Create the line
             self.cur_line = event.widget.create_line(self.start_pos[0], self.start_pos[1], event.x,
-                                                event.y, fill="#3c4048", dash=(3, 5), arrow=tk.BOTH)
+                                                     event.y, fill="#3c4048", dash=(3, 5), arrow=tk.BOTH)
 
     def shrink(self, scale, x=None, y=None):
         objs = self.canvas.find_all()
@@ -145,7 +158,7 @@ class EngDisplay:
             if x is None or y is None:
                 x = self.window.winfo_pointerx() - self.window.winfo_rootx()
                 y = self.window.winfo_pointery() - self.window.winfo_rooty()
-            self.canvas.scale(obj,x,y,scale,scale)
+            self.canvas.scale(obj, x, y, scale, scale)
         self.universal_scale *= scale
 
     def move_by(self, x, y):
@@ -187,10 +200,8 @@ class EngDisplay:
     # Helper Functions
 
     def create_circle(self, x, y, r, **kwargs):
-        return self.canvas.create_oval(x-r, y-r, x+r, y+r, **kwargs)
+        return self.canvas.create_oval(x - r, y - r, x + r, y + r, **kwargs)
 
 
 if __name__ == "__main__":
-    EngDisplay()
-else:
-    print("Run as main")
+    EngDisplay(sys.argv[1] if len(sys.argv) == 2 else None)

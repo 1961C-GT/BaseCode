@@ -4,9 +4,10 @@ import config
 
 
 class Backend:
+    CLEAR_NODES = "CLEAR_NODES"
+
     def __init__(self):
         self.endpoint = HTTPEndpoint(config.BACKEND_URL)
-        pass
 
     def clear_nodes(self):
         mutation = \
@@ -16,7 +17,6 @@ class Backend:
             }       
             """
         self.endpoint(mutation)
-        pass
 
     def update_node(self, node):
         pass
