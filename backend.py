@@ -6,7 +6,6 @@ import config
 class Backend:
     def __init__(self):
         self.endpoint = HTTPEndpoint(config.BACKEND_URL)
-        pass
 
     def clear_nodes(self):
         mutation = \
@@ -15,8 +14,9 @@ class Backend:
               clearNodes
             }       
             """
+        print("Hello!1")
         self.endpoint(mutation)
-        pass
+        print("Hello!2")
 
     def update_node(self, node):
         pass

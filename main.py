@@ -10,14 +10,6 @@ from backend import Backend
 from battery import volts_to_percentage
 import config
 
-# Load algorithm
-alg_name = 'multi_tri'
-alg_module = importlib.import_module('algorithms.' + alg_name + '.' + alg_name)
-algorithm = getattr(alg_module, alg_name)
-
-# Connect to backend
-backend = Backend()
-
 #####################
 # Packet processors #
 #####################
@@ -45,7 +37,7 @@ def algorithm_callback(nodes, _t, _n):
             resolved_ctr += 1
 
 
-def process_range(packet):
+def process_range(packet, algorithm, backend):
     p_cycle, p_from, p_to, p_seq, p_hops, p_range = packet
     p_cycle = int(p_cycle)
     p_range = int(p_range)
@@ -87,7 +79,7 @@ def process_range(packet):
     r_cycle_data.append([p_from, p_to, p_range, p_hops, p_seq])
 
 
-def process_stats(packet):
+def process_stats(packet, algorithm, backend):
     p_cycle, p_from, p_seq, p_hops, p_bat, p_temp, p_heading = packet
     p_bat = volts_to_percentage(float(p_bat))
     print("Got stats from {}: bat={}%, temp={}C, heading={}º (cycle {}, seq {}, {} hops)".format(p_from, p_bat, p_temp,
@@ -103,56 +95,68 @@ PACKET_PROCESSORS = {"Range Packet": process_range, "Stats Packet": process_stat
 # Main #
 ########
 
-def main(src):
-    line_ctr = 0
-    packet_ctr = 0
-    start_time = time.time()
+class Main:
+    def __init__(self, src=None, alg_name='multi_tri', multi_pipe=None):
+        self.multi_pipe = multi_pipe
+        # Load from file if specified, otherwise serial
+        if src:
+            self.src = open(src)
+        else:
+            self.src = serial.Serial(config.SERIAL_PORT, config.SERIAL_BAUD)
 
-    src.readline()  # discard first (possibly incomplete) line
-    for line in src:
+        # Load algorithm
+        alg_module = importlib.import_module('algorithms.' + alg_name + '.' + alg_name)
+        self.algorithm = getattr(alg_module, alg_name)
 
-        try:
-            # Try to decode 'bytes' from serial
-            line = line.decode("utf-8")
-        except AttributeError:
-            # Probably already a 'str' from file
-            pass
+        # Connect to backend
+        self.backend = Backend()
 
-        tmp = line.strip().split("|")
-        line_ctr += 1
+    def run(self):
+        self.multi_pipe.send("Hey, @realMainThread here. I’m alive.") if self.multi_pipe else None
 
-        # Make sure we have a valid packet
-        if len(tmp) != 2:
-            continue
+        # Clear out the backend of stale data
+        # self.backend.clear_nodes()
 
-        # Check packet type
-        packet_type = tmp[0].strip()
-        if packet_type not in PACKET_PROCESSORS.keys():
-            continue
-        packet_ctr += 1
+        line_ctr = 0
+        packet_ctr = 0
+        start_time = time.time()
 
-        # Clean up packet contents
-        packet_contents = tmp[1].strip().split(',')
-        for i in range(len(packet_contents)):
-            packet_contents[i] = packet_contents[i].strip().split(":")[1]
+        self.src.readline()  # discard first (possibly incomplete) line
+        for line in self.src:
 
-        # Pass to packet processor for processing
-        PACKET_PROCESSORS[packet_type](packet_contents)
+            try:
+                # Try to decode 'bytes' from serial
+                line = line.decode("utf-8")
+            except AttributeError:
+                # Probably already a 'str' from file
+                pass
 
-    print()
-    print("Processed {} lines ({} packets) in {} secs".format(line_ctr, packet_ctr, time.time() - start_time))
-    print("Total non-base node resolutions: {}".format(resolved_ctr))
+            tmp = line.strip().split("|")
+            line_ctr += 1
+
+            # Make sure we have a valid packet
+            if len(tmp) != 2:
+                continue
+
+            # Check packet type
+            packet_type = tmp[0].strip()
+            if packet_type not in PACKET_PROCESSORS.keys():
+                continue
+            packet_ctr += 1
+
+            # Clean up packet contents
+            packet_contents = tmp[1].strip().split(',')
+            for i in range(len(packet_contents)):
+                packet_contents[i] = packet_contents[i].strip().split(":")[1]
+
+            # Pass to packet processor for processing
+            PACKET_PROCESSORS[packet_type](packet_contents, self.algorithm, self.backend)
+
+        print()
+        print("Processed {} lines ({} packets) in {} secs".format(line_ctr, packet_ctr, time.time() - start_time))
+        print("Total non-base node resolutions: {}".format(resolved_ctr))
+        self.multi_pipe.send("@realMainThread signing off. Peace.") if self.multi_pipe else None
 
 
 if __name__ == "__main__":
-
-    # Load from file if specified, otherwise serial
-    if len(sys.argv) < 2:
-        data_src = serial.Serial(config.SERIAL_PORT, config.SERIAL_BAUD)
-    else:
-        data_src = open(sys.argv[1])
-
-    # Clear out the backend of stale data
-    backend.clear_nodes()
-
-    main(data_src)
+    Main(sys.argv[1] if len(sys.argv) == 2 else None).run()
