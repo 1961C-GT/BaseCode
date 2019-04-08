@@ -37,9 +37,22 @@ class Main:
         # Connect to backend
         if not self.multi_pipe:
             self.backend = Backend()
+        else:
+            for node_id, node in Main.r_nodes.items():
+                node.set_pipe(self.multi_pipe)
 
     def run(self):
         self.multi_pipe.send("Hey, @realMainThread here. I’m alive.") if self.multi_pipe else None
+        self.multi_pipe.send("Test!") if self.multi_pipe else None
+        cmd_obj =  {
+            "cmd": "draw_circle",
+            "args": {
+                "x": 100,
+                "y": 100,
+                "r": 25
+            }
+        }
+        self.multi_pipe.send(cmd_obj) if self.multi_pipe else None
 
         # Clear out the backend of stale data
         self.multi_pipe.send(Backend.CLEAR_NODES) if self.multi_pipe else self.backend.clear_nodes()
@@ -50,7 +63,6 @@ class Main:
 
         self.src.readline()  # discard first (possibly incomplete) line
         for line in self.src:
-
             try:
                 # Try to decode 'bytes' from serial
                 line = line.decode("utf-8")
@@ -132,7 +144,12 @@ class Main:
                 Main.r_cycle_history.pop()
             Main.r_cycle_history.insert(0, Main.r_cycle_data)
 
-            self.algorithm(Main.r_nodes)._process(self.algorithm_callback)
+            if self.multi_pipe is None:
+                self.algorithm(Main.r_nodes)._process(self.algorithm_callback)
+            else:
+                self.multi_pipe.send({"cmd":"frame_start","args":None})
+                self.algorithm(Main.r_nodes)._process(self.algorithm_callback, multi_pipe=self.multi_pipe)
+                self.multi_pipe.send({"cmd":"frame_end","args":None})
 
             # TODO: push r_cycle_history into algorithm
             # TODO: push algorithm results into UI backend
@@ -144,6 +161,7 @@ class Main:
             Main.r_cycle_data = []
             for node_id, node in Main.r_nodes.items():
                 node.start_new_cycle()
+                node.show()
 
         # print("Got range from {} -> {}: {} (cycle {})".format(p_from, p_to, p_range, r_current_cycle))
         Main.r_nodes[p_from].add_measurement(Main.r_nodes[p_to], p_range)
