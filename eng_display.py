@@ -9,10 +9,12 @@ from canvasvg import *
 from multiprocessing import Process, Pipe
 
 from main import Main
+from backend import Backend
 
 
 class EngDisplay:
     def __init__(self, src=None):
+        self.backend = Backend()
         self.parent_conn, self.child_conn = Pipe()
         self.data_src = src
         self.main = Main(src, multi_pipe=self.child_conn)
@@ -67,7 +69,12 @@ class EngDisplay:
                 return
             if self.parent_conn.poll():
                 msg = self.parent_conn.recv()
-                print(msg)
+                if type(msg) == list and len(msg) > 0:
+                    if msg[0] == Backend.CLEAR_NODES:
+                        self.backend.clear_nodes()
+                    else:
+                        print("Received unrecognized command:")
+                        print(msg)
 
     # Interactive features
 
