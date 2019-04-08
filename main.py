@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from datetime import datetime
 import importlib
 import serial
 import sys
@@ -27,8 +28,10 @@ class Main:
         # Load from file if specified, otherwise serial
         if src:
             self.src = open(src)
+            self.log_file = None
         else:
             self.src = serial.Serial(config.SERIAL_PORT, config.SERIAL_BAUD)
+            self.log_file = open("log-{}.log".format(datetime.now().strftime("%Y%m%d-%H%M%S")), 'w')
 
         # Load algorithm
         alg_module = importlib.import_module('algorithms.' + alg_name + '.' + alg_name)
@@ -69,6 +72,11 @@ class Main:
             except AttributeError:
                 # Probably already a 'str' from file
                 pass
+
+            # Write log, flush to make sure we got it down
+            if self.log_file:
+                self.log_file.write(line)
+                self.log_file.flush()
 
             tmp = line.strip().split("|")
             line_ctr += 1
