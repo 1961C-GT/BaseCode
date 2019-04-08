@@ -6,6 +6,35 @@ from canvasvg import *
 from multiprocessing import Process, Pipe
 from fake_main import FakeMain
 
+class ResizingCanvas(Canvas):
+    def __init__(self,parent,**kwargs):
+        Canvas.__init__(self,parent,**kwargs)
+        self.bind("<Configure>", self.on_resize)
+        self.height = self.winfo_reqheight()
+        self.width = self.winfo_reqwidth()
+        self.scan_x = 0
+        self.scan_y = 0
+        self.x_pos = 0
+        self.y_pos = 0
+        self.x_offset = 0
+        self.y_offset = 0
+        self.scan_mark(self.scan_x,self.scan_y)
+
+    def on_resize(self,event):
+        # determine the ratio of old width/height to new width/height
+        wscale = float(event.width)/self.width
+        hscale = float(event.height)/self.height
+        self.width = event.width
+        self.height = event.height
+        # resize the canvas 
+        self.config(width=self.width, height=self.height)
+        # rescale all the objects tagged with the "all" tag
+        self.scale("bg",0,0,wscale,hscale)
+        self.scan_x = int(self.width/20)
+        self.scan_y = int(self.height/20)
+        self.scan_mark(self.scan_x,self.scan_y)
+        self.scan_dragto(int(self.x_pos/10),int(self.y_pos/10))
+
 class EngDisplay:
     def __init__(self):
         self.parent_conn, self.child_conn = Pipe()
@@ -13,10 +42,10 @@ class EngDisplay:
         self.fm = FakeMain(self.data_src, self.child_conn)
         self.proc = Process(target=self.fm.run)
         self.proc.start()
-        self.width = 700
-        self.height = 700
+        # self.width = 700
+        # self.height = 700
         self.move_amt = 20
-        self.universal_scale = 1
+        self.universal_scale = 5
         self.start_pos = []
         self.measuring = False
         self.cur_line = None
@@ -26,10 +55,14 @@ class EngDisplay:
 
     def create_eng_display(self):
         self.window = tk.Tk()
+        self.myframe = Frame(self.window)
+        self.myframe.pack(fill=BOTH, expand=YES)
+        self.canvas = ResizingCanvas(self.myframe,width=850, height=400, borderwidth=0, bg="#22252b", highlightthickness=0)
+        self.canvas.pack(fill=BOTH, expand=YES)
         # root.resizable(width=False, height=False)
-        self.canvas = tk.Canvas(self.window, width=self.width, height=self.height, borderwidth=0,
-                        highlightthickness=0, bg="#22252b")
-        self.canvas.grid(column=0, row=0, columnspan=30)
+        # self.canvas = tk.Canvas(self.window, borderwidth=0,
+                        # highlightthickness=0, bg="#22252b")
+        # self.canvas.grid(column=0, row=0, columnspan=30)
         self.canvas.create_rectangle(-2500, -300, 3000, 4250, fill="#22242a")
         # Add menu
         self.menubar = Menu(self.window)
@@ -45,11 +78,13 @@ class EngDisplay:
         self.canvas.bind('<Button-1>', self.start_measure)
         self.canvas.bind('<Button-3>', lambda e: self.zoom(0.9))
         self.canvas.bind('<Button-2>', lambda e: self.zoom(0.9))
-        self.window.bind('<Up>', lambda e: self.move(0,self.move_amt))
-        self.window.bind('<Down>', lambda e: self.move(0,-self.move_amt))
-        self.window.bind('<Left>', lambda e: self.move(self.move_amt,0))
-        self.window.bind('<Right>', lambda e: self.move(-self.move_amt,0))
+        self.window.bind('<Up>', lambda e: self.move_by(0,self.move_amt))
+        self.window.bind('<Down>', lambda e: self.move_by(0,-self.move_amt))
+        self.window.bind('<Left>', lambda e: self.move_by(self.move_amt,0))
+        self.window.bind('<Right>', lambda e: self.move_by(-self.move_amt,0))
         self.canvas.bind('<ButtonRelease-1>', self.stop_measure)
+
+        self.canvas.addtag_all("bg")
 
         self.mainLoop()
 
@@ -63,6 +98,8 @@ class EngDisplay:
             if self.parent_conn.poll():
                 msg = self.parent_conn.recv()
                 print(msg)
+                if msg == 'Test!':
+                    self.create_circle(100, 100, 100)
 
 
     # Interactive features
@@ -111,12 +148,15 @@ class EngDisplay:
             self.canvas.scale(obj,x,y,scale,scale)
         self.universal_scale *= scale
 
-    def move(self, x, y):
-        objs = self.canvas.find_all()
-        for obj in objs:
-            if self.canvas.type(obj) == "text" and not 'scale' in self.canvas.gettags(obj):
-                continue
-            self.canvas.move(obj, x, y)
+    def move_by(self, x, y):
+        self.canvas.x_pos = self.canvas.x_pos + x
+        self.canvas.y_pos = self.canvas.y_pos + y
+        self.canvas.scan_dragto(int(self.canvas.x_pos/10),int(self.canvas.y_pos/10))
+
+    def move_to(self, x, y):
+        self.canvas.x_pos = x
+        self.canvas.y_pos = y
+        self.canvas.scan_dragto(int(self.canvas.x_pos/10),int(self.canvas.y_pos/10))
 
     def start_measure(self, event):
         # Save the initial point
