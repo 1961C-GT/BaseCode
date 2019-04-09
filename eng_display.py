@@ -121,7 +121,7 @@ class EngDisplay:
         # self.canvas = tk.Canvas(self.window, borderwidth=0,
         # highlightthickness=0, bg="#22252b")
         # self.canvas.grid(column=0, row=0, columnspan=30)
-        self.canvas.create_rectangle(-2500, -300, 3000, 4250, fill="#22242a")
+        # self.canvas.create_rectangle(-2500, -300, 3000, 4250, fill="#22242a")
         # Add menu
         self.menu_bar = Menu(self.window)
         self.file_menu = Menu(self.menu_bar, tearoff=0)
@@ -334,7 +334,8 @@ class EngDisplay:
             width = 3
         x = x * self.meas_to_map
         y = y * self.meas_to_map
-        self.create_circle(x, y, r * self.m_to_pixel, extra_tags=tags, fill=fill, width=width, outline=outline)
+        r = r * self.meas_to_map
+        self.create_circle(x, y, r, extra_tags=tags, fill=fill, width=width, outline=outline)
 
     def connect_points(self, args):
         pos1 = self.get_val_from_args(args, "pos1")
@@ -381,7 +382,7 @@ class EngDisplay:
                                     fill="white", font=font.Font(family='Courier New', size=14),
                                     justify=tk.LEFT, angle=rotation, tags=['scale', 'obj'])
         if dashed is True:
-            self.canvas.create_line(node1_pos[0], node1_pos[1], node2_pos[0], node2_pos[1], fill=color, dash=(3, 5),
+            self.canvas.create_line(node1_pos[0], node1_pos[1], node2_pos[0], node2_pos[1], fill=color, dash=(1, 5),
                                     tags="obj")
         else:
             self.canvas.create_line(node1_pos[0], node1_pos[1], node2_pos[0], node2_pos[1], fill=color, tags="obj")
