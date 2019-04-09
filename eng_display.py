@@ -14,8 +14,8 @@ from backend import Backend
 
 
 class ResizingCanvas(Canvas):
-    def __init__(self,parent,**kwargs):
-        Canvas.__init__(self,parent,**kwargs)
+    def __init__(self, parent, **kwargs):
+        Canvas.__init__(self, parent, **kwargs)
         self.bind("<Configure>", self.on_resize)
         self.height = self.winfo_reqheight()
         self.width = self.winfo_reqwidth()
@@ -25,36 +25,37 @@ class ResizingCanvas(Canvas):
         self.y_pos = 0
         self.x_offset = 0
         self.y_offset = 0
-        self.move_by(self.width/4, 100)
+        self.move_by(self.width / 4, 100)
 
         # self.scan_mark(self.scan_x,self.scan_y)
 
-    def on_resize(self,event):
+    def on_resize(self, event):
         # determine the ratio of old width/height to new width/height
-        wscale = float(event.width)/self.width
-        hscale = float(event.height)/self.height
+        wscale = float(event.width) / self.width
+        hscale = float(event.height) / self.height
         old_width = self.width
         old_height = self.height
         self.width = event.width
         self.height = event.height
         # resize the canvas 
-        self.scale("bg",0,0,wscale,hscale)
-        self.canvas_shift((self.width-old_width)/2, (self.height-old_height)/2)
+        self.scale("bg", 0, 0, wscale, hscale)
+        self.canvas_shift((self.width - old_width) / 2, (self.height - old_height) / 2)
 
     def canvas_shift(self, x, y):
         self.x_offset = self.x_offset - x
         self.y_offset = self.y_offset - y
-        self.move_by(x,y)
+        self.move_by(x, y)
 
     def move_by(self, x, y):
         self.x_pos = self.x_pos + x
         self.y_pos = self.y_pos + y
-        self.scan_dragto(int(self.x_pos/10),int(self.y_pos/10))
+        self.scan_dragto(int(self.x_pos / 10), int(self.y_pos / 10))
 
     def move_to(self, x, y):
         self.x_pos = x
         self.y_pos = y
-        self.scan_dragto(int(self.x_pos/10),int(self.y_pos/10))
+        self.scan_dragto(int(self.x_pos / 10), int(self.y_pos / 10))
+
 
 # Message Structures
 # {
@@ -80,6 +81,11 @@ class ResizingCanvas(Canvas):
 #   "cmd": "backend_clear_nodes"
 #   "args": None
 # }
+#
+# {
+#   "cmd": "backend_update_node"
+#   "args": Node
+# }
 
 class EngDisplay:
     def __init__(self, src=None):
@@ -93,7 +99,7 @@ class EngDisplay:
         # self.height = 700
         self.move_amt = 20
         self.m_to_pixel = 1
-        self.meas_to_map = 1/1000
+        self.meas_to_map = 1 / 1000
         self.universal_scale = 2
         self.start_pos = []
         self.measuring = False
@@ -108,12 +114,12 @@ class EngDisplay:
         self.myframe = Frame(self.window)
         self.myframe.pack(fill=BOTH, expand=YES)
         w, h = self.window.winfo_screenwidth(), self.window.winfo_screenheight()
-        self.canvas = ResizingCanvas(self.myframe,width=w, height=h, borderwidth=0, bg="#22252b", highlightthickness=0)
+        self.canvas = ResizingCanvas(self.myframe, width=w, height=h, borderwidth=0, bg="#22252b", highlightthickness=0)
         self.canvas.pack(fill=BOTH, expand=YES)
         self.zoom(2)
         # root.resizable(width=False, height=False)
         # self.canvas = tk.Canvas(self.window, borderwidth=0,
-                        # highlightthickness=0, bg="#22252b")
+        # highlightthickness=0, bg="#22252b")
         # self.canvas.grid(column=0, row=0, columnspan=30)
         self.canvas.create_rectangle(-2500, -300, 3000, 4250, fill="#22242a")
         # Add menu
@@ -130,10 +136,10 @@ class EngDisplay:
         self.canvas.bind('<Button-1>', self.start_measure)
         self.canvas.bind('<Button-3>', lambda e: self.zoom(0.9))
         self.canvas.bind('<Button-2>', lambda e: self.zoom(0.9))
-        self.window.bind('<Up>', lambda e: self.canvas.move_by(0,self.move_amt))
-        self.window.bind('<Down>', lambda e: self.canvas.move_by(0,-self.move_amt))
-        self.window.bind('<Left>', lambda e: self.canvas.move_by(self.move_amt,0))
-        self.window.bind('<Right>', lambda e: self.canvas.move_by(-self.move_amt,0))
+        self.window.bind('<Up>', lambda e: self.canvas.move_by(0, self.move_amt))
+        self.window.bind('<Down>', lambda e: self.canvas.move_by(0, -self.move_amt))
+        self.window.bind('<Left>', lambda e: self.canvas.move_by(self.move_amt, 0))
+        self.window.bind('<Right>', lambda e: self.canvas.move_by(-self.move_amt, 0))
         self.canvas.bind('<ButtonRelease-1>', self.stop_measure)
 
         self.canvas.addtag_all("bg")
@@ -150,7 +156,6 @@ class EngDisplay:
         self.window.destroy()
         self.closed = True
         print('Window Closed!')
-
 
     def main_loop(self):
         frame_end = False
@@ -171,15 +176,19 @@ class EngDisplay:
                 if self.parent_conn.poll():
                     msg = self.parent_conn.recv()
                     if type(msg) == dict and "cmd" in msg:
+                        if "args" not in msg:
+                            continue
                         if msg['cmd'] == "frame_start":
                             frame_end = False
-                        if msg['cmd'] == "frame_end":
+                        elif msg['cmd'] == "frame_end":
                             frame_end = True
                             break
                         elif msg['cmd'] == "clear_screen":
                             self.clear_canvas()
                         elif msg['cmd'] == "draw_circle":
                             self.draw_circle(msg['args'])
+                        elif msg['cmd'] == "connect_points":
+                            self.connect_points(msg['args'])
                         elif msg['cmd'] == "backend_clear_nodes":
                             self.backend.clear_nodes()
                         elif msg['cmd'] == "backend_update_node":
@@ -250,13 +259,13 @@ class EngDisplay:
         if x is None or y is None:
             x = self.window.winfo_pointerx() - self.window.winfo_rootx()
             y = self.window.winfo_pointery() - self.window.winfo_rooty()
-        (x, y) = self.translate_screen_pos_to_canvas_pos(x,y)
-        self.canvas.scale("obj",x,y,scale,scale)
+        (x, y) = self.translate_screen_pos_to_canvas_pos(x, y)
+        self.canvas.scale("obj", x, y, scale, scale)
         self.universal_scale *= scale
 
     def translate_screen_pos_to_canvas_pos(self, x, y):
         return (x - self.canvas.x_pos, y - self.canvas.y_pos)
-    
+
     def translate_canvas_pos_to_screen_pos(self, x, y):
         return (x + self.canvas.x_pos, y + self.canvas.y_pos)
 
@@ -306,7 +315,6 @@ class EngDisplay:
         fill = self.get_val_from_args(args, "fill")
         tags = self.get_val_from_args(args, "tags")
         outline = self.get_val_from_args(args, "outline")
-        convert = self.get_val_from_args(args, "convert_to_m")
         if x is None or y is None or r is None:
             print(f"Invalid args input for function 'draw_circle': {args}")
             return
@@ -320,15 +328,59 @@ class EngDisplay:
             tags = []
         if outline is None:
             outline = "white"
-        if convert is True:
-            x = x * self.meas_to_map
-            y = y * self.meas_to_map
-        self.create_circle(x, y, r*self.m_to_pixel, extra_tags=tags, fill=fill, outline=outline)
+        x = x * self.meas_to_map
+        y = y * self.meas_to_map
+        self.create_circle(x, y, r * self.m_to_pixel, extra_tags=tags, fill=fill, outline=outline)
+
+    def connect_points(self, args):
+        pos1 = self.get_val_from_args(args, "pos1")
+        pos2 = self.get_val_from_args(args, "pos2")
+        dashed = self.get_val_from_args(args, "dashed")
+        color = self.get_val_from_args(args, "color")
+        text = self.get_val_from_args(args, "text")
+        if pos1 is None or pos2 is None:
+            print(f"Invalid args input for function 'connect_points': {args}")
+            return
+        if dashed is None:
+            dashed = True
+        if color is None:
+            color = "#3c4048"
+
+        pos1_scaled = (pos1[0] * self.meas_to_map * self.universal_scale + self.canvas.x_pos,
+                       pos1[1] * self.meas_to_map * self.universal_scale + self.canvas.y_pos)
+        pos2_scaled = (pos2[0] * self.meas_to_map * self.universal_scale + self.canvas.x_pos,
+                       pos2[1] * self.meas_to_map * self.universal_scale + self.canvas.y_pos)
+
+        self._connect_points(pos1_scaled, pos2_scaled, text=text, dashed=dashed, color=color)
 
     def create_circle(self, x, y, r, extra_tags=[], **kwargs):
         (x, y) = self.translate_canvas_pos_to_screen_pos(x, y)
-        tags=["obj"]
+        tags = ["obj"]
         return self.canvas.create_oval(x - r, y - r, x + r, y + r, tags=(tags + extra_tags), **kwargs)
+
+    def _connect_points(self, node1_pos, node2_pos, text=None, dashed=True, color="#3c4048"):
+        if node2_pos[0] is None or node2_pos[1] is None or node1_pos[0] is None or node1_pos[1] is None:
+            return
+        if text is not None:
+            # Calculate the rotation between the two points
+            rotation = 180 - math.degrees(math.atan2(node1_pos[1] - node2_pos[1],
+                                                     node1_pos[0] - node2_pos[0]))
+            # node1_pos the rotation
+            if rotation > 90 and rotation < 270:
+                rotation -= 180
+            # Convert to radians
+            rrotation = math.radians(rotation)
+            # Calculate mid point + rotation offset
+            midx = (node1_pos[0] + node2_pos[0]) / 2 - math.sin(rrotation) * 20
+            midy = (node1_pos[1] + node2_pos[1]) / 2 - math.cos(rrotation) * 20
+            self.canvas.create_text(midx, midy, text=text,
+                                    fill="white", font=font.Font(family='Courier New', size=14),
+                                    justify=tk.LEFT, angle=rotation, tags=['scale', 'obj'])
+        if dashed is True:
+            self.canvas.create_line(node1_pos[0], node1_pos[1], node2_pos[0], node2_pos[1], fill=color, dash=(3, 5),
+                                    tags="obj")
+        else:
+            self.canvas.create_line(node1_pos[0], node1_pos[1], node2_pos[0], node2_pos[1], fill=color, tags="obj")
 
 
 if __name__ == "__main__":

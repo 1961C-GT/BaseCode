@@ -113,8 +113,8 @@ class Main:
     r_cycle_data = []
     r_cycle_history = []
     r_nodes = {
-        "0": Node("0", "Base 1", is_base=True, x=0, y=0),
-        "1": Node("1", "Base 2", is_base=True, x=47000, y=0),
+        "1": Node("1", "Base 2", is_base=True, x=0, y=0),
+        "0": Node("0", "Base 1", is_base=True, x=47000, y=0),
         "2": Node("2", "Node 1"),
         "3": Node("3", "Node 2"),
         "4": Node("4", "Node 3"),
@@ -171,7 +171,7 @@ class Main:
             Main.r_cycle_data = []
             for node_id, node in Main.r_nodes.items():
                 node.start_new_cycle()
-                node.show()
+                # node.show()
 
         # print("Got range from {} -> {}: {} (cycle {})".format(p_from, p_to, p_range, r_current_cycle))
         Main.r_nodes[p_from].add_measurement(Main.r_nodes[p_to], p_range)
