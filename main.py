@@ -11,6 +11,7 @@ import threading
 from algorithms.helpers.node import Node
 from backend import Backend
 from battery import volts_to_percentage
+from meas_history import MeasHistory
 import config
 
 
@@ -49,6 +50,16 @@ class Main:
         else:
             for node_id, node in Main.r_nodes.items():
                 node.set_pipe(self.multi_pipe)
+
+        self.name_arr = []
+        self.history = {}
+        for key,value in Main.r_nodes.items():
+            val = int(key)
+            for i in range(val+1, len(Main.r_nodes)):
+                self.name_arr.append(f"{val}-{i}")
+        
+        for name in self.name_arr:
+            self.history[name] = MeasHistory(name)
 
     def run(self):
         self.multi_pipe.send("Hey, @realMainThread here. I’m alive.") if self.multi_pipe else None
@@ -119,8 +130,8 @@ class Main:
     r_cycle_data = []
     r_cycle_history = []
     r_nodes = {
-        "1": Node("1", "Base 2", is_base=True, x=0, y=0),
         "0": Node("0", "Base 1", is_base=True, x=47000, y=0),
+        "1": Node("1", "Base 2", is_base=True, x=0, y=0),
         "2": Node("2", "Node 1"),
         "3": Node("3", "Node 2"),
         "4": Node("4", "Node 3"),
@@ -136,6 +147,14 @@ class Main:
                 else self.backend.update_node(node)
             if not node.is_base and node.is_resolved():
                 Main.resolved_ctr += 1
+
+    def get_key_from_nodes(self, node_id_1, node_id_2):
+        n1 = int(node_id_1)
+        n2 = int(node_id_2)
+        if n1 > n2:
+            return str(n2) + "-" + str(n1)
+        else:
+            return str(n1) + "-" + str(n2)
 
     def process_range(self, packet):
         p_cycle, p_from, p_to, p_seq, p_hops, p_range = packet
@@ -178,9 +197,22 @@ class Main:
             for node_id, node in Main.r_nodes.items():
                 node.start_new_cycle()
                 # node.show()
+            for name in self.name_arr:
+                # self.history[name].new_cycle()
+                meas = self.history[name]
+                meas.new_cycle()
+                n1 = meas.get_node_1()
+                n2 = meas.get_node_2()
+                avg = meas.get_avg()
+                if avg != 0:
+                    Main.r_nodes[n1].add_measurement(Main.r_nodes[n2], avg)
+                    Main.r_nodes[n2].add_measurement(Main.r_nodes[n1], avg)
 
         # print("Got range from {} -> {}: {} (cycle {})".format(p_from, p_to, p_range, r_current_cycle))
-        Main.r_nodes[p_from].add_measurement(Main.r_nodes[p_to], p_range)
+        
+        key = self.get_key_from_nodes(p_from, p_to)
+        self.history[key].add_measurement(p_range)
+        # Main.r_nodes[p_from].add_measurement(Main.r_nodes[p_to], p_range)
         Main.r_cycle_data.append([p_from, p_to, p_range, p_hops, p_seq])
 
     def process_stats(self, packet):
