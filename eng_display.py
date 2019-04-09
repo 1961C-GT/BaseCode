@@ -166,15 +166,19 @@ class EngDisplay:
                 if self.parent_conn.poll():
                     msg = self.parent_conn.recv()
                     if type(msg) == dict and "cmd" in msg:
+                        if "args" not in msg:
+                            continue
                         if msg['cmd'] == "frame_start":
                             frame_end = False
-                        if msg['cmd'] == "frame_end":
+                        elif msg['cmd'] == "frame_end":
                             frame_end = True
                             break
                         elif msg['cmd'] == "clear_screen":
                             self.clear_canvas()
                         elif msg['cmd'] == "draw_circle":
                             self.draw_circle(msg['args'])
+                        elif msg['cmd'] == "connect_points":
+                            self.connect_points(msg['args'])
                         else:
                             print(f"Unknown command: {msg['cmd']}")
                     else:
@@ -297,7 +301,6 @@ class EngDisplay:
         fill = self.get_val_from_args(args, "fill")
         tags = self.get_val_from_args(args, "tags")
         outline = self.get_val_from_args(args, "outline")
-        convert = self.get_val_from_args(args, "convert_to_m")
         if x is None or y is None or r is None:
             print(f"Invalid args input for function 'draw_circle': {args}")
             return
@@ -311,15 +314,56 @@ class EngDisplay:
             tags = []
         if outline is None:
             outline = "white"
-        if convert is True:
-            x = x * self.meas_to_map
-            y = y * self.meas_to_map
+        x = x * self.meas_to_map
+        y = y * self.meas_to_map
         self.create_circle(x, y, r*self.m_to_pixel, extra_tags=tags, fill=fill, outline=outline)
+
+    def connect_points(self, args):
+        pos1 = self.get_val_from_args(args, "pos1")
+        pos2 = self.get_val_from_args(args, "pos2")
+        dashed = self.get_val_from_args(args, "dashed")
+        color = self.get_val_from_args(args, "color")
+        text = self.get_val_from_args(args, "text")
+        if pos1 is None or pos2 is None:
+            print(f"Invalid args input for function 'connect_points': {args}")
+            return
+        if dashed is None:
+            dashed = True
+        if color is None:
+            color = "#3c4048"
+
+        pos1_scaled = (pos1[0] * self.meas_to_map * self.universal_scale + self.canvas.x_pos, pos1[1] * self.meas_to_map * self.universal_scale + self.canvas.y_pos)
+        pos2_scaled = (pos2[0] * self.meas_to_map * self.universal_scale + self.canvas.x_pos, pos2[1] * self.meas_to_map * self.universal_scale + self.canvas.y_pos)
+
+        self._connect_points(pos1_scaled, pos2_scaled, text=text, dashed=dashed, color=color)
 
     def create_circle(self, x, y, r, extra_tags=[], **kwargs):
         (x, y) = self.translate_canvas_pos_to_screen_pos(x, y)
         tags=["obj"]
         return self.canvas.create_oval(x - r, y - r, x + r, y + r, tags=(tags + extra_tags), **kwargs)
+
+    def _connect_points(self, node1_pos, node2_pos, text=None, dashed=True, color="#3c4048"):
+        if node2_pos[0] is None or node2_pos[1] is None or node1_pos[0] is None or node1_pos[1] is None:
+            return
+        if text is not None:
+            # Calculate the rotation between the two points
+            rotation = 180 - math.degrees(math.atan2(node1_pos[1] - node2_pos[1],
+                node1_pos[0] - node2_pos[0]))
+            # node1_pos the rotation
+            if rotation > 90 and rotation < 270:
+                rotation -= 180
+            # Convert to radians
+            rrotation = math.radians(rotation)
+            # Calculate mid point + rotation offset
+            midx = (node1_pos[0] + node2_pos[0])/2 - math.sin(rrotation)*20
+            midy = (node1_pos[1] + node2_pos[1])/2 - math.cos(rrotation)*20
+            self.canvas.create_text(midx, midy, text=text,
+                fill="white", font=font.Font(family='Courier New', size=14),
+                justify=tk.LEFT,angle=rotation,tags=['scale','obj'])
+        if dashed is True:
+            self.canvas.create_line(node1_pos[0], node1_pos[1], node2_pos[0], node2_pos[1], fill=color, dash=(3,5), tags="obj")
+        else:
+            self.canvas.create_line(node1_pos[0], node1_pos[1], node2_pos[0], node2_pos[1], fill=color, tags="obj")
 
 
 if __name__ == "__main__":
