@@ -40,6 +40,13 @@ class Backend:
                     lat: %(lat).6f
                     lon: %(lon).6f
                   }
+                  orientation: {
+                    heading: 0.0
+                    source: POSITION
+                  }
+                }
+                telemetry: {
+                  groundSpeed: 0.0
                 }
               }) {
                 id
@@ -47,10 +54,10 @@ class Backend:
             }
             """
 
-        if node.id == "0":
+        if node.id == "1":
             self.base_1_node = node
             lat, lon = config.BASE_1_GPS
-        elif node.id == "1":
+        elif node.id == "0":
             self.base_2_node = node
             # lat, lon = config.BASE_2_GPS  # could do this, but can also be sanity check for GPS translator
             lat, lon = self.translate_node_to_gps_coords(node)
