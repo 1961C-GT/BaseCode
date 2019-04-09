@@ -90,19 +90,26 @@ class ResizingCanvas(Canvas):
 # {
 #   "cmd": "backend_update_node_heading"
 #   "args": {
-#       "heading": int,
+#       "id": str,
+#       "heading": float,
 #       "source": TELEMETRY or POSITION
 #   }
 # }
 #
 # {
 #   "cmd": "backend_update_node_temp"
-#   "args": int
+#   "args": {
+#       "id": str,
+#       "temp": float,
+#   }
 # }
 #
 # {
 #   "cmd": "backend_update_node_batt"
-#   "args": int
+#   "args": {
+#       "id": str,
+#       "batt": float,
+#   }
 # }
 
 class EngDisplay:
@@ -219,9 +226,9 @@ class EngDisplay:
                             except KeyError:
                                 self.backend.update_node_heading(msg['args']['id'], msg['args']['heading'])
                         elif msg['cmd'] == "backend_update_node_temp":
-                            self.backend.update_node_temp(msg['args'])
+                            self.backend.update_node_temp(msg['args']['id'], msg['args']['temp'])
                         elif msg['cmd'] == "backend_update_node_batt":
-                            self.backend.update_node_batt(msg['args'])
+                            self.backend.update_node_batt(msg['args']['id'], msg['args']['batt'])
                         else:
                             print(f"Unknown command: {msg['cmd']}")
                     else:
@@ -229,7 +236,6 @@ class EngDisplay:
                 else:
                     receiving = False
             receiving = True
-            time.sleep(0.01666666667)
 
     # Interactive features
 

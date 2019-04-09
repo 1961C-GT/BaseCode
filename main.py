@@ -141,7 +141,7 @@ class Main:
     resolved_ctr = 0
 
     def algorithm_callback(self, nodes, _t, _n):
-        self.multi_pipe.send({"cmd": "backend_clear_nodes"}) if self.multi_pipe else self.backend.clear_nodes()
+        # self.multi_pipe.send({"cmd": "backend_clear_nodes"}) if self.multi_pipe else self.backend.clear_nodes()
         for node_id, node in nodes.items():
             self.multi_pipe.send({"cmd": "backend_update_node", "args": node}) if self.multi_pipe \
                 else self.backend.update_node(node)
@@ -182,7 +182,6 @@ class Main:
             if self.multi_pipe is None:
                 self.algorithm(Main.r_nodes)._process(self.algorithm_callback)
             else:
-                time.sleep(0.01)
                 self.multi_pipe.send({"cmd": "frame_start", "args": None})
                 self.algorithm(Main.r_nodes)._process(self.algorithm_callback, multi_pipe=self.multi_pipe)
                 self.multi_pipe.send({"cmd": "frame_end", "args": None})
@@ -206,11 +205,8 @@ class Main:
                     Main.r_nodes[n1].add_measurement(Main.r_nodes[n2], avg, std=std)
                     Main.r_nodes[n2].add_measurement(Main.r_nodes[n1], avg, std=std)
 
-        # print("Got range from {} -> {}: {} (cycle {})".format(p_from, p_to, p_range, r_current_cycle))
-
         key = self.get_key_from_nodes(p_from, p_to)
         self.history[key].add_measurement(p_range)
-        # Main.r_nodes[p_from].add_measurement(Main.r_nodes[p_to], p_range)
         Main.r_cycle_data.append([p_from, p_to, p_range, p_hops, p_seq])
 
     def process_stats(self, packet):
@@ -218,17 +214,14 @@ class Main:
         p_heading = float(p_heading)
         p_temp = float(p_temp)
         p_batt = volts_to_percentage(float(p_batt))
-        # print("Got stats from {}: bat={}%, temp={}C, heading={}º (cycle {}, seq {}, {} hops)".format(p_from, p_batt, p_temp,
-        #                                                                                              p_heading, p_cycle,
-        #                                                                                              p_seq, p_hops))
         self.multi_pipe.send(
             {"cmd": "backend_update_node_heading", "args": {"id": p_from, "heading": p_heading}}) if self.multi_pipe \
             else self.backend.update_node_heading(p_from, p_heading, "TELEMETRY")
         self.multi_pipe.send(
-            {"cmd": "backend_update_node_temp", "args": p_temp}) if self.multi_pipe \
+            {"cmd": "backend_update_node_temp", "args": {"id": p_from, "temp": p_temp}}) if self.multi_pipe \
             else self.backend.update_node_temp(p_from, p_temp)
         self.multi_pipe.send(
-            {"cmd": "backend_update_node_batt", "args": p_batt}) if self.multi_pipe \
+            {"cmd": "backend_update_node_batt", "args": {"id": p_from, "batt": p_batt}}) if self.multi_pipe \
             else self.backend.update_node_batt(p_from, p_batt)
 
 
@@ -249,7 +242,7 @@ class SerialSender(threading.Thread):
             if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
                 # If we do, then write it directly to the serial interface
                 self.outputPipe.write(bytes(sys.stdin.readline(), 'utf-8'))
-            # Sleep for a little so that the infinate loop doesnt kill the CPU
+            # Sleep for a little so that the infinite loop doesnt kill the CPU
             time.sleep(0.1)
 
 

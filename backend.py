@@ -113,7 +113,7 @@ class Backend:
             mutation {
               updateNode(id: "%(id)s", node: {
                 telemetry: {
-                  batt: %(temp).2f
+                  batt: %(batt).2f
                 }
               }) {
                 id
