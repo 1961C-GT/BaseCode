@@ -86,6 +86,24 @@ class ResizingCanvas(Canvas):
 #   "cmd": "backend_update_node"
 #   "args": Node
 # }
+#
+# {
+#   "cmd": "backend_update_node_heading"
+#   "args": {
+#       "heading": int,
+#       "source": TELEMETRY or POSITION
+#   }
+# }
+#
+# {
+#   "cmd": "backend_update_node_temp"
+#   "args": int
+# }
+#
+# {
+#   "cmd": "backend_update_node_batt"
+#   "args": int
+# }
 
 class EngDisplay:
     def __init__(self, src=None):
@@ -194,6 +212,16 @@ class EngDisplay:
                             self.backend.clear_nodes()
                         elif msg['cmd'] == "backend_update_node":
                             self.backend.update_node(msg['args'])
+                        elif msg['cmd'] == "backend_update_node_heading":
+                            try:
+                                self.backend.update_node_heading(msg['args']['id'], msg['args']['heading'],
+                                                                 msg['args']['source'])
+                            except KeyError:
+                                self.backend.update_node_heading(msg['args']['id'], msg['args']['heading'])
+                        elif msg['cmd'] == "backend_update_node_temp":
+                            self.backend.update_node_temp(msg['args'])
+                        elif msg['cmd'] == "backend_update_node_batt":
+                            self.backend.update_node_batt(msg['args'])
                         else:
                             print(f"Unknown command: {msg['cmd']}")
                     else:

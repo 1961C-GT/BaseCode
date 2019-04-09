@@ -2,15 +2,12 @@ from sgqlc.endpoint.http import HTTPEndpoint
 
 import config
 from pygeodesy.sphericalNvector import LatLon
-import time
 from statistics import mean
 from algorithms.helpers.node import Node
 import math
 
 
 class Backend:
-    CLEAR_NODES = "CLEAR_NODES"
-
     def __init__(self):
         self.base_1_node: Node = None
         self.base_2_node: Node = None
@@ -40,13 +37,6 @@ class Backend:
                     lat: %(lat).6f
                     lon: %(lon).6f
                   }
-                  orientation: {
-                    heading: 0.0
-                    source: POSITION
-                  }
-                }
-                telemetry: {
-                  groundSpeed: 0.0
                 }
               }) {
                 id
@@ -70,6 +60,70 @@ class Backend:
             'type': 'BASE' if node.is_base else 'MOBILE',
             'lat': lat,
             'lon': lon
+        }
+        self.endpoint(mutation)
+
+    def update_node_heading(self, n_id, heading, source="TELEMETRY"):
+        mutation = \
+            """
+            mutation {
+              updateNode(id: "%(id)s", node: {
+                pose: {
+                  orientation: {
+                    heading: %(heading).2f
+                    source: %(source)s
+                  }
+                }
+              }) {
+                id
+              }
+            }
+            """
+
+        mutation = mutation % {
+            'id': n_id,
+            'heading': heading,
+            'source': source
+        }
+        self.endpoint(mutation)
+
+    def update_node_temp(self, n_id, temp):
+        mutation = \
+            """
+            mutation {
+              updateNode(id: "%(id)s", node: {
+                telemetry: {
+                  temp: %(temp).2f
+                }
+              }) {
+                id
+              }
+            }
+            """
+
+        mutation = mutation % {
+            'id': n_id,
+            'temp': temp
+        }
+        self.endpoint(mutation)
+
+    def update_node_batt(self, n_id, batt):
+        mutation = \
+            """
+            mutation {
+              updateNode(id: "%(id)s", node: {
+                telemetry: {
+                  batt: %(temp).2f
+                }
+              }) {
+                id
+              }
+            }
+            """
+
+        mutation = mutation % {
+            'id': n_id,
+            'batt': batt
         }
         self.endpoint(mutation)
 
