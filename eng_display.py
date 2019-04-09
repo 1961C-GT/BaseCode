@@ -315,6 +315,7 @@ class EngDisplay:
         fill = self.get_val_from_args(args, "fill")
         tags = self.get_val_from_args(args, "tags")
         outline = self.get_val_from_args(args, "outline")
+        width = self.get_val_from_args(args, "width")
         if x is None or y is None or r is None:
             print(f"Invalid args input for function 'draw_circle': {args}")
             return
@@ -328,9 +329,11 @@ class EngDisplay:
             tags = []
         if outline is None:
             outline = "white"
+        if width is None:
+            width = 3
         x = x * self.meas_to_map
         y = y * self.meas_to_map
-        self.create_circle(x, y, r * self.m_to_pixel, extra_tags=tags, fill=fill, outline=outline)
+        self.create_circle(x, y, r * self.m_to_pixel, extra_tags=tags, fill=fill, width=width, outline=outline)
 
     def connect_points(self, args):
         pos1 = self.get_val_from_args(args, "pos1")
