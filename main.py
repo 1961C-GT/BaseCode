@@ -19,7 +19,7 @@ import config
 class Main:
 
     def __init__(self, src=None, alg_name='multi_tri', multi_pipe=None):
-        # TODO: This is not the right place for this
+
         self.PACKET_PROCESSORS = {"Range Packet": self.process_range, "Stats Packet": self.process_stats}
 
         # Communication with engineering display
@@ -47,7 +47,7 @@ class Main:
     def run(self):
         self.multi_pipe.send("Hey, @realMainThread here. I’m alive.") if self.multi_pipe else None
         self.multi_pipe.send("Test!") if self.multi_pipe else None
-        cmd_obj =  {
+        cmd_obj = {
             "cmd": "draw_circle",
             "args": {
                 "x": 100,
@@ -58,7 +58,7 @@ class Main:
         self.multi_pipe.send(cmd_obj) if self.multi_pipe else None
 
         # Clear out the backend of stale data
-        self.multi_pipe.send(Backend.CLEAR_NODES) if self.multi_pipe else self.backend.clear_nodes()
+        self.multi_pipe.send({"cmd": "backend_clear_nodes"}) if self.multi_pipe else self.backend.clear_nodes()
 
         line_ctr = 0
         packet_ctr = 0
@@ -123,9 +123,11 @@ class Main:
 
     resolved_ctr = 0
 
-    @staticmethod
-    def algorithm_callback(nodes, _t, _n):
+    def algorithm_callback(self, nodes, _t, _n):
+        self.multi_pipe.send({"cmd": "backend_clear_nodes"}) if self.multi_pipe else self.backend.clear_nodes()
         for node_id, node in nodes.items():
+            self.multi_pipe.send({"cmd": "backend_update_node", "args": node}) if self.multi_pipe \
+                else self.backend.update_node(node)
             if not node.is_base and node.is_resolved():
                 Main.resolved_ctr += 1
 
@@ -155,9 +157,9 @@ class Main:
             if self.multi_pipe is None:
                 self.algorithm(Main.r_nodes)._process(self.algorithm_callback)
             else:
-                self.multi_pipe.send({"cmd":"frame_start","args":None})
+                self.multi_pipe.send({"cmd": "frame_start", "args": None})
                 self.algorithm(Main.r_nodes)._process(self.algorithm_callback, multi_pipe=self.multi_pipe)
-                self.multi_pipe.send({"cmd":"frame_end","args":None})
+                self.multi_pipe.send({"cmd": "frame_end", "args": None})
 
             # TODO: push r_cycle_history into algorithm
             # TODO: push algorithm results into UI backend

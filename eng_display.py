@@ -75,6 +75,11 @@ class ResizingCanvas(Canvas):
 #   "cmd": "clear_screen"
 #   "args": None
 # }
+#
+# {
+#   "cmd": "backend_clear_nodes"
+#   "args": None
+# }
 
 class EngDisplay:
     def __init__(self, src=None):
@@ -175,6 +180,10 @@ class EngDisplay:
                             self.clear_canvas()
                         elif msg['cmd'] == "draw_circle":
                             self.draw_circle(msg['args'])
+                        elif msg['cmd'] == "backend_clear_nodes":
+                            self.backend.clear_nodes()
+                        elif msg['cmd'] == "backend_update_node":
+                            self.backend.update_node(msg['args'])
                         else:
                             print(f"Unknown command: {msg['cmd']}")
                     else:
