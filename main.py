@@ -214,15 +214,20 @@ class Main:
         p_heading = float(p_heading)
         p_temp = float(p_temp)
         p_batt = volts_to_percentage(float(p_batt))
+        # self.multi_pipe.send(
+        #     {"cmd": "backend_update_node_heading", "args": {"id": p_from, "heading": p_heading}}) if self.multi_pipe \
+        #     else self.backend.update_node_heading(p_from, p_heading, "TELEMETRY")
+        # self.multi_pipe.send(
+        #     {"cmd": "backend_update_node_temp", "args": {"id": p_from, "temp": p_temp}}) if self.multi_pipe \
+        #     else self.backend.update_node_temp(p_from, p_temp)
+        # self.multi_pipe.send(
+        #     {"cmd": "backend_update_node_batt", "args": {"id": p_from, "batt": p_batt}}) if self.multi_pipe \
+        #     else self.backend.update_node_batt(p_from, p_batt)
         self.multi_pipe.send(
-            {"cmd": "backend_update_node_heading", "args": {"id": p_from, "heading": p_heading}}) if self.multi_pipe \
-            else self.backend.update_node_heading(p_from, p_heading, "TELEMETRY")
-        self.multi_pipe.send(
-            {"cmd": "backend_update_node_temp", "args": {"id": p_from, "temp": p_temp}}) if self.multi_pipe \
-            else self.backend.update_node_temp(p_from, p_temp)
-        self.multi_pipe.send(
-            {"cmd": "backend_update_node_batt", "args": {"id": p_from, "batt": p_batt}}) if self.multi_pipe \
-            else self.backend.update_node_batt(p_from, p_batt)
+            {"cmd": "backend_update_node_telemetry",
+             "args": {"id": p_from, "temp": p_temp, "batt": p_batt, "heading": p_heading,
+                      "source": "TELEMETRY"}}) if self.multi_pipe \
+            else self.backend.update_node_telemetry(p_from, p_temp, p_batt, p_heading, "TELEMETRY")
 
 
 #################
@@ -236,7 +241,7 @@ class SerialSender(threading.Thread):
         self.outputPipe = outputPipe
 
     def run(self):
-        # Infinate loop (kinda sucks)
+        # Infinite loop (kinda sucks)
         while (True):
             # See if we have anything to read in
             if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:

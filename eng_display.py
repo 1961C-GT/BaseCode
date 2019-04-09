@@ -111,6 +111,17 @@ class ResizingCanvas(Canvas):
 #       "batt": float,
 #   }
 # }
+#
+# {
+#   "cmd": "backend_update_node_telemetry"
+#   "args": {
+#       "id": str,
+#       "temp": float,
+#       "batt": float,
+#       "heading": float,
+#       "source": TELEMETRY or POSITION
+#   }
+# }
 
 class EngDisplay:
     def __init__(self, src=None):
@@ -229,6 +240,14 @@ class EngDisplay:
                             self.backend.update_node_temp(msg['args']['id'], msg['args']['temp'])
                         elif msg['cmd'] == "backend_update_node_batt":
                             self.backend.update_node_batt(msg['args']['id'], msg['args']['batt'])
+                        elif msg['cmd'] == "backend_update_node_telemetry":
+                            try:
+                                self.backend.update_node_telemetry(msg['args']['id'], msg['args']['temp'],
+                                                                   msg['args']['batt'], msg['args']['heading'],
+                                                                   msg['args']['source'])
+                            except KeyError:
+                                self.backend.update_node_telemetry(msg['args']['id'], msg['args']['temp'],
+                                                                   msg['args']['batt'], msg['args']['heading'])
                         else:
                             print(f"Unknown command: {msg['cmd']}")
                     else:
@@ -373,10 +392,10 @@ class EngDisplay:
         self.create_circle(x, y, r, extra_tags=tags, fill=fill, width=width, outline=outline)
 
         if text is not None:
-            ypos = y-r-20
+            ypos = y - r - 20
             if ypos < 0:
-                ypos = y+r+20
-            self.create_text(x,ypos,text=text)
+                ypos = y + r + 20
+            self.create_text(x, ypos, text=text)
 
     def connect_points(self, args):
         pos1 = self.get_val_from_args(args, "pos1")
@@ -399,7 +418,8 @@ class EngDisplay:
         pos2_scaled = (pos2[0] * self.meas_to_map * self.universal_scale + self.canvas.x_pos,
                        pos2[1] * self.meas_to_map * self.universal_scale + self.canvas.y_pos)
 
-        self._connect_points(pos1_scaled, pos2_scaled, text=text, text_size=text_size, text_color=text_color, dashed=dashed, color=color)
+        self._connect_points(pos1_scaled, pos2_scaled, text=text, text_size=text_size, text_color=text_color,
+                             dashed=dashed, color=color)
 
     def create_circle(self, x, y, r, extra_tags=[], **kwargs):
         (x, y) = self.translate_canvas_pos_to_screen_pos(x, y)
@@ -409,11 +429,12 @@ class EngDisplay:
     def create_text(self, x, y, text="", extra_tags=[], **kwargs):
         (x, y) = self.translate_canvas_pos_to_screen_pos(x, y)
         tags = ["obj"]
-        self.canvas.create_text(x,y,text=text,
-                fill="white", font=font.Font(family='Courier New', size=14),
-                justify=tk.LEFT,tags=(tags + extra_tags))
+        self.canvas.create_text(x, y, text=text,
+                                fill="white", font=font.Font(family='Courier New', size=14),
+                                justify=tk.LEFT, tags=(tags + extra_tags))
 
-    def _connect_points(self, node1_pos, node2_pos, text=None, text_size=None, text_color=None, dashed=True, color="#3c4048"):
+    def _connect_points(self, node1_pos, node2_pos, text=None, text_size=None, text_color=None, dashed=True,
+                        color="#3c4048"):
         if node2_pos[0] is None or node2_pos[1] is None or node1_pos[0] is None or node1_pos[1] is None:
             return
         if text is not None:

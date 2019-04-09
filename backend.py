@@ -127,6 +127,36 @@ class Backend:
         }
         self.endpoint(mutation)
 
+    def update_node_telemetry(self, n_id, temp, batt, heading, source="TELEMETRY"):
+        mutation = \
+            """
+            mutation {
+              updateNode(id: "%(id)s", node: {
+                pose: {
+                  orientation: {
+                    heading: %(heading).2f
+                    source: %(source)s
+                  }
+                }
+                telemetry: {
+                  temp: %(temp).2f
+                  batt: %(batt).2f
+                }
+              }) {
+                id
+              }
+            }
+            """
+
+        mutation = mutation % {
+            'id': n_id,
+            'temp': temp,
+            'batt': batt,
+            'heading': heading,
+            'source': source
+        }
+        self.endpoint(mutation)
+
     def translate_node_to_gps_coords(self, node):
         if not self.base_1_node or not self.base_2_node:
             return node.x, node.y
