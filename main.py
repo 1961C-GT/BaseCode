@@ -37,7 +37,7 @@ class Main:
             self.log_file = open("log-{}.log".format(datetime.now().strftime("%Y%m%d-%H%M%S")), 'w')
 
         # Thread for piping stdin to the serial port (for manually typing commands)
-        serial_sender = SerialSender(outputPipe = self.src)
+        serial_sender = SerialSender(outputPipe=self.src)
         serial_sender.start()
 
         # Load algorithm
@@ -53,11 +53,11 @@ class Main:
 
         self.name_arr = []
         self.history = {}
-        for key,value in Main.r_nodes.items():
+        for key, value in Main.r_nodes.items():
             val = int(key)
-            for i in range(val+1, len(Main.r_nodes)):
+            for i in range(val + 1, len(Main.r_nodes)):
                 self.name_arr.append(f"{val}-{i}")
-        
+
         for name in self.name_arr:
             self.history[name] = MeasHistory(name)
 
@@ -187,10 +187,6 @@ class Main:
                 self.algorithm(Main.r_nodes)._process(self.algorithm_callback, multi_pipe=self.multi_pipe)
                 self.multi_pipe.send({"cmd": "frame_end", "args": None})
 
-            # TODO: push r_cycle_history into algorithm
-            # TODO: push algorithm results into UI backend
-            # we might want to do this in a separate thread
-
             # Keep track of cycle count in a way that's not affected by system reboots
             Main.r_current_cycle += 1
             Main.r_cycle_offset = p_cycle - Main.r_current_cycle
@@ -211,19 +207,30 @@ class Main:
                     Main.r_nodes[n2].add_measurement(Main.r_nodes[n1], avg, std=std)
 
         # print("Got range from {} -> {}: {} (cycle {})".format(p_from, p_to, p_range, r_current_cycle))
-        
+
         key = self.get_key_from_nodes(p_from, p_to)
         self.history[key].add_measurement(p_range)
         # Main.r_nodes[p_from].add_measurement(Main.r_nodes[p_to], p_range)
         Main.r_cycle_data.append([p_from, p_to, p_range, p_hops, p_seq])
 
     def process_stats(self, packet):
-        p_cycle, p_from, p_seq, p_hops, p_bat, p_temp, p_heading = packet
-        p_bat = volts_to_percentage(float(p_bat))
-        # print("Got stats from {}: bat={}%, temp={}C, heading={}º (cycle {}, seq {}, {} hops)".format(p_from, p_bat, p_temp,
+        p_cycle, p_from, p_seq, p_hops, p_batt, p_temp, p_heading = packet
+        p_heading = float(p_heading)
+        p_temp = float(p_temp)
+        p_batt = volts_to_percentage(float(p_batt))
+        # print("Got stats from {}: bat={}%, temp={}C, heading={}º (cycle {}, seq {}, {} hops)".format(p_from, p_batt, p_temp,
         #                                                                                              p_heading, p_cycle,
         #                                                                                              p_seq, p_hops))
-        # TODO: push stats directly into UI backend
+        self.multi_pipe.send(
+            {"cmd": "backend_update_node_heading", "args": {"id": p_from, "heading": p_heading}}) if self.multi_pipe \
+            else self.backend.update_node_heading(p_from, p_heading, "TELEMETRY")
+        self.multi_pipe.send(
+            {"cmd": "backend_update_node_temp", "args": p_temp}) if self.multi_pipe \
+            else self.backend.update_node_temp(p_from, p_temp)
+        self.multi_pipe.send(
+            {"cmd": "backend_update_node_batt", "args": p_batt}) if self.multi_pipe \
+            else self.backend.update_node_batt(p_from, p_batt)
+
 
 #################
 # Serial Sender #
@@ -244,6 +251,7 @@ class SerialSender(threading.Thread):
                 self.outputPipe.write(bytes(sys.stdin.readline(), 'utf-8'))
             # Sleep for a little so that the infinate loop doesnt kill the CPU
             time.sleep(0.1)
+
 
 if __name__ == "__main__":
     Main(sys.argv[1] if len(sys.argv) == 2 else None).run()
