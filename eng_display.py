@@ -317,6 +317,7 @@ class EngDisplay:
         tags = self.get_val_from_args(args, "tags")
         outline = self.get_val_from_args(args, "outline")
         width = self.get_val_from_args(args, "width")
+        text = self.get_val_from_args(args, "text")
         if x is None or y is None or r is None:
             print(f"Invalid args input for function 'draw_circle': {args}")
             return
@@ -337,12 +338,20 @@ class EngDisplay:
         r = r * self.meas_to_map
         self.create_circle(x, y, r, extra_tags=tags, fill=fill, width=width, outline=outline)
 
+        if text is not None:
+            ypos = y-r-20
+            if ypos < 0:
+                ypos = y+r+20
+            self.create_text(x,ypos,text=text)
+
     def connect_points(self, args):
         pos1 = self.get_val_from_args(args, "pos1")
         pos2 = self.get_val_from_args(args, "pos2")
         dashed = self.get_val_from_args(args, "dashed")
         color = self.get_val_from_args(args, "color")
         text = self.get_val_from_args(args, "text")
+        text_size = self.get_val_from_args(args, "text_size")
+        text_color = self.get_val_from_args(args, "text_color")
         if pos1 is None or pos2 is None:
             print(f"Invalid args input for function 'connect_points': {args}")
             return
@@ -356,14 +365,21 @@ class EngDisplay:
         pos2_scaled = (pos2[0] * self.meas_to_map * self.universal_scale + self.canvas.x_pos,
                        pos2[1] * self.meas_to_map * self.universal_scale + self.canvas.y_pos)
 
-        self._connect_points(pos1_scaled, pos2_scaled, text=text, dashed=dashed, color=color)
+        self._connect_points(pos1_scaled, pos2_scaled, text=text, text_size=text_size, text_color=text_color, dashed=dashed, color=color)
 
     def create_circle(self, x, y, r, extra_tags=[], **kwargs):
         (x, y) = self.translate_canvas_pos_to_screen_pos(x, y)
         tags = ["obj"]
         return self.canvas.create_oval(x - r, y - r, x + r, y + r, tags=(tags + extra_tags), **kwargs)
 
-    def _connect_points(self, node1_pos, node2_pos, text=None, dashed=True, color="#3c4048"):
+    def create_text(self, x, y, text="", extra_tags=[], **kwargs):
+        (x, y) = self.translate_canvas_pos_to_screen_pos(x, y)
+        tags = ["obj"]
+        self.canvas.create_text(x,y,text=text,
+                fill="white", font=font.Font(family='Courier New', size=14),
+                justify=tk.LEFT,tags=(tags + extra_tags))
+
+    def _connect_points(self, node1_pos, node2_pos, text=None, text_size=None, text_color=None, dashed=True, color="#3c4048"):
         if node2_pos[0] is None or node2_pos[1] is None or node1_pos[0] is None or node1_pos[1] is None:
             return
         if text is not None:
@@ -376,10 +392,14 @@ class EngDisplay:
             # Convert to radians
             rrotation = math.radians(rotation)
             # Calculate mid point + rotation offset
-            midx = (node1_pos[0] + node2_pos[0]) / 2 - math.sin(rrotation) * 20
-            midy = (node1_pos[1] + node2_pos[1]) / 2 - math.cos(rrotation) * 20
+            midx = (node1_pos[0] + node2_pos[0]) / 2 - math.sin(rrotation) * 5
+            midy = (node1_pos[1] + node2_pos[1]) / 2 - math.cos(rrotation) * 5
+            if text_size is None:
+                text_size = 14
+            if text_color is None:
+                text_color = "white"
             self.canvas.create_text(midx, midy, text=text,
-                                    fill="white", font=font.Font(family='Courier New', size=14),
+                                    fill=text_color, font=font.Font(family='Courier New', size=text_size),
                                     justify=tk.LEFT, angle=rotation, tags=['scale', 'obj'])
         if dashed is True:
             self.canvas.create_line(node1_pos[0], node1_pos[1], node2_pos[0], node2_pos[1], fill=color, dash=(1, 5),
