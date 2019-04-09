@@ -4,7 +4,9 @@ from datetime import datetime
 import importlib
 import serial
 import sys
+import select
 import time
+import threading
 
 from algorithms.helpers.node import Node
 from backend import Backend
@@ -32,6 +34,10 @@ class Main:
         else:
             self.src = serial.Serial(config.SERIAL_PORT, config.SERIAL_BAUD)
             self.log_file = open("log-{}.log".format(datetime.now().strftime("%Y%m%d-%H%M%S")), 'w')
+
+        # Thread for piping stdin to the serial port (for manually typing commands)
+        serial_sender = SerialSender(outputPipe = self.src)
+        serial_sender.start()
 
         # Load algorithm
         alg_module = importlib.import_module('algorithms.' + alg_name + '.' + alg_name)
@@ -185,6 +191,25 @@ class Main:
         #                                                                                              p_seq, p_hops))
         # TODO: push stats directly into UI backend
 
+#################
+# Serial Sender #
+#################
+# Allows user input from the main console to be piped directly to the 
+# Serial interface.
+class SerialSender(threading.Thread):
+    def __init__(self, outputPipe):
+        super().__init__()
+        self.outputPipe = outputPipe
+
+    def run(self):
+        # Infinate loop (kinda sucks)
+        while (True):
+            # See if we have anything to read in
+            if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+                # If we do, then write it directly to the serial interface
+                self.outputPipe.write(bytes(sys.stdin.readline(), 'utf-8'))
+            # Sleep for a little so that the infinate loop doesnt kill the CPU
+            time.sleep(0.1)
 
 if __name__ == "__main__":
     Main(sys.argv[1] if len(sys.argv) == 2 else None).run()
