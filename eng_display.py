@@ -116,7 +116,7 @@ class EngDisplay:
         w, h = self.window.winfo_screenwidth(), self.window.winfo_screenheight()
         self.canvas = ResizingCanvas(self.myframe, width=w, height=h, borderwidth=0, bg="#22252b", highlightthickness=0)
         self.canvas.pack(fill=BOTH, expand=YES)
-        self.zoom(2)
+        self.zoom(3)
         # root.resizable(width=False, height=False)
         # self.canvas = tk.Canvas(self.window, borderwidth=0,
         # highlightthickness=0, bg="#22252b")
@@ -166,9 +166,9 @@ class EngDisplay:
                 if not self.updateFrame():
                     return
                 last_update = time.time()
-                self.clear_canvas()
+                # self.clear_canvas()
                 frame_end = False
-            elif time.time() - last_update > 0.0333:
+            elif time.time() - last_update > 0.01666666667:
                 if not self.updateFrame():
                     return
                 last_update = time.time()
@@ -180,6 +180,7 @@ class EngDisplay:
                             continue
                         if msg['cmd'] == "frame_start":
                             frame_end = False
+                            self.clear_canvas()
                         elif msg['cmd'] == "frame_end":
                             frame_end = True
                             break
@@ -200,7 +201,7 @@ class EngDisplay:
                 else:
                     receiving = False
             receiving = True
-            time.sleep(0.03333333333)
+            time.sleep(0.01666666667)
 
     # Interactive features
 

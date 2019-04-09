@@ -176,6 +176,7 @@ class Main:
             if self.multi_pipe is None:
                 self.algorithm(Main.r_nodes)._process(self.algorithm_callback)
             else:
+                time.sleep(0.01)
                 self.multi_pipe.send({"cmd": "frame_start", "args": None})
                 self.algorithm(Main.r_nodes)._process(self.algorithm_callback, multi_pipe=self.multi_pipe)
                 self.multi_pipe.send({"cmd": "frame_end", "args": None})
@@ -194,13 +195,14 @@ class Main:
             for name in self.name_arr:
                 # self.history[name].new_cycle()
                 meas = self.history[name]
-                meas.new_cycle()
                 n1 = meas.get_node_1()
                 n2 = meas.get_node_2()
                 avg = meas.get_avg()
+                std = meas.get_std_deviation()
+                meas.new_cycle()
                 if avg != 0:
-                    Main.r_nodes[n1].add_measurement(Main.r_nodes[n2], avg)
-                    Main.r_nodes[n2].add_measurement(Main.r_nodes[n1], avg)
+                    Main.r_nodes[n1].add_measurement(Main.r_nodes[n2], avg, std=std)
+                    Main.r_nodes[n2].add_measurement(Main.r_nodes[n1], avg, std=std)
 
         # print("Got range from {} -> {}: {} (cycle {})".format(p_from, p_to, p_range, r_current_cycle))
         
