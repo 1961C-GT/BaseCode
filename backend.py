@@ -59,18 +59,20 @@ class Backend:
 
         mutation = mutation % {
             'id': node.id,
-            'name': str(node),
+            'name': node.name,
             'type': 'BASE' if node.is_base else 'MOBILE',
             'lat': lat,
             'lon': lon
         }
         threading.Thread(target=lambda: self.endpoint(mutation)).start()
 
-    def update_node_telemetry(self, n_id, temp, batt, heading, source="TELEMETRY"):
+    def update_node_telemetry(self, node, temp, batt, heading, source="TELEMETRY"):
         mutation = \
             """
             mutation {
               updateNode(id: "%(id)s", node: {
+                type: %(type)s
+                name: "%(name)s"
                 pose: {
                   orientation: {
                     heading: %(heading).2f
@@ -88,7 +90,9 @@ class Backend:
             """
 
         mutation = mutation % {
-            'id': n_id,
+            'id': node.id,
+            'name': node.name,
+            'type': 'BASE' if node.is_base else 'MOBILE',
             'temp': temp,
             'batt': batt,
             'heading': heading,
