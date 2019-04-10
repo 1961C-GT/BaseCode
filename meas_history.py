@@ -6,12 +6,14 @@ class MeasHistory:
     MIN_DIST = 750    # mm
     MAX_DIST = 500000 # mm
 
-    def __init__(self, key):
+    def __init__(self, key, max_meas=MAX_MEAS, min_vals=5):
         self.key = key
         self.node1, self.node2 = self.key.split('-')
         self.meas_list = []
         self.added_meas = False
         self.volitile_cycle = True
+        self.max_meas = max_meas
+        self.min_vals = min_vals
 
     def get_key(self):
         return self.key
@@ -34,7 +36,7 @@ class MeasHistory:
             return
         self.added_meas = True
         self.meas_list.append(dist)
-        if len(self.meas_list) > MeasHistory.MAX_MEAS:
+        if len(self.meas_list) > self.max_meas:
             self.meas_list.pop(0)
 
     def get_avg(self):
@@ -44,7 +46,7 @@ class MeasHistory:
             sum_val += dist
             if dist != 0:
                 counter += 1
-        if counter < 5:
+        if counter < self.min_vals:
             return 0 # TODO: Remove when we do deviation?
         return sum_val / counter
 

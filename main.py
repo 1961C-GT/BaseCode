@@ -21,6 +21,21 @@ from meas_history import MeasHistory
 
 class Main:
 
+    AUTO_SETUP_BASE = False
+    MANUAL_BASE_DIST = 47000  # Units in mm. Only used if AUTO_SETUP_BASE is False
+
+    ANCHORED_BASE = "0"       # Base station whose position will be fixed as (0, 0)
+    CALCULATED_BASE = "1"     # Base station whose position will be varied
+
+    r_nodes = {
+        "0": Node("0", "Base 2", is_base=True, x=0, y=0),
+        "1": Node("1", "Base 1", is_base=True, x=0, y=0),
+        "2": Node("2", "Node 1"),
+        "3": Node("3", "Node 2"),
+        "4": Node("4", "Node 3"),
+        "5": Node("5", "Node 4"),
+    }
+
     def __init__(self, src=None, alg_name='multi_tri', multi_pipe=None):
 
         self.PACKET_PROCESSORS = {"Range Packet": self.process_range, "Stats Packet": self.process_stats}
@@ -58,7 +73,10 @@ class Main:
                 self.name_arr.append(f"{val}-{i}")
 
         for name in self.name_arr:
-            self.history[name] = MeasHistory(name)
+            if Main.AUTO_SETUP_BASE is True and name == Main.auto_base_meas_key:
+                self.history[name] = MeasHistory(name, max_meas=100, min_vals=5)
+            else:
+                self.history[name] = MeasHistory(name)
 
     def run(self):
         self.multi_pipe.send("Hey, @realMainThread here. I’m alive.") if self.multi_pipe else None
@@ -118,14 +136,15 @@ class Main:
     r_cycle_offset = None
     r_cycle_data = []
     r_cycle_history = []
-    r_nodes = {
-        "0": Node("0", "Base 2", is_base=True, x=0, y=0),
-        "1": Node("1", "Base 1", is_base=True, x=67500, y=0),
-        "2": Node("2", "Node 1"),
-        "3": Node("3", "Node 2"),
-        "4": Node("4", "Node 3"),
-        "5": Node("5", "Node 4"),
-    }
+
+    auto_base_meas_key = ANCHORED_BASE + "-" + CALCULATED_BASE
+    if int(ANCHORED_BASE) > int(CALCULATED_BASE):
+        auto_base_meas_key = CALCULATED_BASE + "-" + ANCHORED_BASE
+
+    if AUTO_SETUP_BASE is False:
+        r_nodes[CALCULATED_BASE].set_real_x_pos(MANUAL_BASE_DIST)
+    else:
+        r_nodes[CALCULATED_BASE].force_set_resolved(False)
 
     resolved_ctr = 0
 
@@ -169,10 +188,10 @@ class Main:
             Main.r_cycle_history.insert(0, Main.r_cycle_data)
 
             if self.multi_pipe is None:
-                self.algorithm(Main.r_nodes)._process(self.algorithm_callback)
+                self.algorithm(Main.r_nodes, [Main.ANCHORED_BASE, Main.CALCULATED_BASE])._process(self.algorithm_callback)
             else:
                 self.multi_pipe.send({"cmd": "frame_start", "args": None})
-                self.algorithm(Main.r_nodes)._process(self.algorithm_callback, multi_pipe=self.multi_pipe)
+                self.algorithm(Main.r_nodes, [Main.ANCHORED_BASE, Main.CALCULATED_BASE])._process(self.algorithm_callback, multi_pipe=self.multi_pipe)
                 self.multi_pipe.send({"cmd": "frame_end", "args": None})
 
             # Keep track of cycle count in a way that's not affected by system reboots
@@ -193,6 +212,9 @@ class Main:
                 if avg != 0:
                     Main.r_nodes[n1].add_measurement(Main.r_nodes[n2], avg, std=std)
                     Main.r_nodes[n2].add_measurement(Main.r_nodes[n1], avg, std=std)
+                
+                if Main.AUTO_SETUP_BASE and name == Main.auto_base_meas_key and avg != 0:
+                    Main.r_nodes[Main.CALCULATED_BASE].set_real_x_pos(avg)
 
         key = self.get_key_from_nodes(p_from, p_to)
         self.history[key].add_measurement(p_range)

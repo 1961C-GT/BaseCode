@@ -95,7 +95,7 @@ class EngDisplay:
         self.cur_line = None
         self.cur_line_txt = None
         self.closed = False
-
+        self.tk_version = tk.TclVersion
         self.create_eng_display()
 
     def create_eng_display(self):
@@ -130,6 +130,9 @@ class EngDisplay:
         self.window.bind('<Left>', lambda e: self.canvas.move_by(self.move_amt, 0))
         self.window.bind('<Right>', lambda e: self.canvas.move_by(-self.move_amt, 0))
         self.canvas.bind('<ButtonRelease-1>', self.stop_measure)
+
+        # for x in range(-1000, 1000, 100):
+            # self.canvas.create_line(x, 1000, x, -1000, fill="white",tags="obj-bg")
 
         self.canvas.addtag_all("bg")
 
@@ -232,20 +235,12 @@ class EngDisplay:
                                                      y, fill="#3c4048", dash=(3, 5), arrow=tk.BOTH)
 
     def shrink(self, scale, x=None, y=None):
-        # objs = self.canvas.find_all()
-        # for obj in objs:
-        #     if self.canvas.type(obj) == "text" and not 'scale' in self.canvas.gettags(obj):
-        #         continue
-        #     if x is None or y is None:
-        #         x = self.window.winfo_pointerx() - self.window.winfo_rootx()
-        #         y = self.window.winfo_pointery() - self.window.winfo_rooty()
-        #     (x, y) = self.translate_screen_pos_to_canvas_pos(x,y)
-        #     self.canvas.scale(obj, x, y, scale, scale)
         if x is None or y is None:
             x = self.window.winfo_pointerx() - self.window.winfo_rootx()
             y = self.window.winfo_pointery() - self.window.winfo_rooty()
         (x, y) = self.translate_screen_pos_to_canvas_pos(x, y)
         self.canvas.scale("obj", x, y, scale, scale)
+        self.canvas.scale("obj-bg", x, y, scale, scale)
         self.universal_scale *= scale
 
     def translate_screen_pos_to_canvas_pos(self, x, y):
@@ -294,6 +289,7 @@ class EngDisplay:
         else:
             return None
 
+
     def draw_circle(self, args):
         x = self.get_val_from_args(args, "x")
         y = self.get_val_from_args(args, "y")
@@ -337,6 +333,7 @@ class EngDisplay:
         text = self.get_val_from_args(args, "text")
         text_size = self.get_val_from_args(args, "text_size")
         text_color = self.get_val_from_args(args, "text_color")
+        arrow = self.get_val_from_args(args, "arrow")
         if pos1 is None or pos2 is None:
             print(f"Invalid args input for function 'connect_points': {args}")
             return
@@ -345,13 +342,18 @@ class EngDisplay:
         if color is None:
             color = "#3c4048"
 
+        if arrow is "both":
+            arrow = tk.BOTH
+        else:
+            arrow = None
+
         pos1_scaled = (pos1[0] * self.meas_to_map * self.universal_scale + self.canvas.x_pos,
                        pos1[1] * self.meas_to_map * self.universal_scale + self.canvas.y_pos)
         pos2_scaled = (pos2[0] * self.meas_to_map * self.universal_scale + self.canvas.x_pos,
                        pos2[1] * self.meas_to_map * self.universal_scale + self.canvas.y_pos)
 
         self._connect_points(pos1_scaled, pos2_scaled, text=text, text_size=text_size, text_color=text_color,
-                             dashed=dashed, color=color)
+                             dashed=dashed, color=color, arrow=arrow)
 
     def create_circle(self, x, y, r, extra_tags=[], **kwargs):
         (x, y) = self.translate_canvas_pos_to_screen_pos(x, y)
@@ -366,7 +368,7 @@ class EngDisplay:
                                 justify=tk.LEFT, tags=(tags + extra_tags))
 
     def _connect_points(self, node1_pos, node2_pos, text=None, text_size=None, text_color=None, dashed=True,
-                        color="#3c4048"):
+                        color="#3c4048", arrow=None):
         if node2_pos[0] is None or node2_pos[1] is None or node1_pos[0] is None or node1_pos[1] is None:
             return
         if text is not None:
@@ -385,14 +387,19 @@ class EngDisplay:
                 text_size = 14
             if text_color is None:
                 text_color = "white"
-            self.canvas.create_text(midx, midy, text=text,
+            if self.tk_version >= 8.6:
+                self.canvas.create_text(midx, midy, text=text,
                                     fill=text_color, font=font.Font(family='Courier New', size=text_size),
-                                    justify=tk.LEFT, tags=['scale', 'obj'])  # angle=rotation
+                                    justify=tk.LEFT, tags=['scale', 'obj'], angle=rotation)
+            else:
+                self.canvas.create_text(midx, midy, text=text,
+                                    fill=text_color, font=font.Font(family='Courier New', size=text_size),
+                                    justify=tk.LEFT, tags=['scale', 'obj'])
         if dashed is True:
-            self.canvas.create_line(node1_pos[0], node1_pos[1], node2_pos[0], node2_pos[1], fill=color, dash=(1, 5),
+            self.canvas.create_line(node1_pos[0], node1_pos[1], node2_pos[0], node2_pos[1], fill=color, dash=(1, 5), arrow=arrow,
                                     tags="obj")
         else:
-            self.canvas.create_line(node1_pos[0], node1_pos[1], node2_pos[0], node2_pos[1], fill=color, tags="obj")
+            self.canvas.create_line(node1_pos[0], node1_pos[1], node2_pos[0], node2_pos[1], fill=color, arrow=arrow, tags="obj")
 
 
 if __name__ == "__main__":
