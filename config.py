@@ -17,5 +17,9 @@ MAX_HISTORY = 20  # How many historical cycles to feed to algorithm
 
 BACKEND_URL = "https://web.mnslac.xtriage.com/graphql"
 
-BASE_1_GPS = 34.217852, -83.952365
-BASE_2_GPS = 34.217921, -83.950185
+###############
+# Site config #
+###############
+
+BASE_1_GPS = 34.21797, -83.95238
+BASE_2_GPS = 34.21763, -83.95173

@@ -6,7 +6,6 @@ import time
 import tkinter as tk
 from tkinter import font
 from tkinter import *
-from canvasvg import *
 from multiprocessing import Process, Pipe
 
 from main import Main
@@ -76,52 +75,6 @@ class ResizingCanvas(Canvas):
 #   "cmd": "clear_screen"
 #   "args": None
 # }
-#
-# {
-#   "cmd": "backend_clear_nodes"
-#   "args": None
-# }
-#
-# {
-#   "cmd": "backend_update_node"
-#   "args": Node
-# }
-#
-# {
-#   "cmd": "backend_update_node_heading"
-#   "args": {
-#       "id": str,
-#       "heading": float,
-#       "source": TELEMETRY or POSITION
-#   }
-# }
-#
-# {
-#   "cmd": "backend_update_node_temp"
-#   "args": {
-#       "id": str,
-#       "temp": float,
-#   }
-# }
-#
-# {
-#   "cmd": "backend_update_node_batt"
-#   "args": {
-#       "id": str,
-#       "batt": float,
-#   }
-# }
-#
-# {
-#   "cmd": "backend_update_node_telemetry"
-#   "args": {
-#       "id": str,
-#       "temp": float,
-#       "batt": float,
-#       "heading": float,
-#       "source": TELEMETRY or POSITION
-#   }
-# }
 
 class EngDisplay:
     def __init__(self, src=None):
@@ -183,7 +136,7 @@ class EngDisplay:
         self.window.protocol("WM_DELETE_WINDOW", self.close_callback)
 
         self.create_circle(100, 100, 100)
-        if not self.updateFrame():
+        if not self.update_frame():
             return
 
         self.main_loop()
@@ -199,13 +152,13 @@ class EngDisplay:
         last_update = 0
         while True:
             if frame_end is True:
-                if not self.updateFrame():
+                if not self.update_frame():
                     return
                 last_update = time.time()
                 # self.clear_canvas()
                 frame_end = False
             elif time.time() - last_update > 0.01666666667:
-                if not self.updateFrame():
+                if not self.update_frame():
                     return
                 last_update = time.time()
             while receiving is True:
@@ -226,28 +179,6 @@ class EngDisplay:
                             self.draw_circle(msg['args'])
                         elif msg['cmd'] == "connect_points":
                             self.connect_points(msg['args'])
-                        elif msg['cmd'] == "backend_clear_nodes":
-                            self.backend.clear_nodes()
-                        elif msg['cmd'] == "backend_update_node":
-                            self.backend.update_node(msg['args'])
-                        elif msg['cmd'] == "backend_update_node_heading":
-                            try:
-                                self.backend.update_node_heading(msg['args']['id'], msg['args']['heading'],
-                                                                 msg['args']['source'])
-                            except KeyError:
-                                self.backend.update_node_heading(msg['args']['id'], msg['args']['heading'])
-                        elif msg['cmd'] == "backend_update_node_temp":
-                            self.backend.update_node_temp(msg['args']['id'], msg['args']['temp'])
-                        elif msg['cmd'] == "backend_update_node_batt":
-                            self.backend.update_node_batt(msg['args']['id'], msg['args']['batt'])
-                        elif msg['cmd'] == "backend_update_node_telemetry":
-                            try:
-                                self.backend.update_node_telemetry(msg['args']['id'], msg['args']['temp'],
-                                                                   msg['args']['batt'], msg['args']['heading'],
-                                                                   msg['args']['source'])
-                            except KeyError:
-                                self.backend.update_node_telemetry(msg['args']['id'], msg['args']['temp'],
-                                                                   msg['args']['batt'], msg['args']['heading'])
                         else:
                             print(f"Unknown command: {msg['cmd']}")
                     else:
@@ -258,7 +189,7 @@ class EngDisplay:
 
     # Interactive features
 
-    def updateFrame(self):
+    def update_frame(self):
         try:
             self.window.update_idletasks()
             self.window.update()
@@ -318,10 +249,10 @@ class EngDisplay:
         self.universal_scale *= scale
 
     def translate_screen_pos_to_canvas_pos(self, x, y):
-        return (x - self.canvas.x_pos, y - self.canvas.y_pos)
+        return x - self.canvas.x_pos, y - self.canvas.y_pos
 
     def translate_canvas_pos_to_screen_pos(self, x, y):
-        return (x + self.canvas.x_pos, y + self.canvas.y_pos)
+        return x + self.canvas.x_pos, y + self.canvas.y_pos
 
     def start_measure(self, event):
         # Save the initial point
@@ -356,7 +287,8 @@ class EngDisplay:
     def clear_canvas(self):
         self.canvas.delete("obj")
 
-    def get_val_from_args(self, args, val):
+    @staticmethod
+    def get_val_from_args(args, val):
         if val in args:
             return args[val]
         else:
@@ -442,7 +374,7 @@ class EngDisplay:
             rotation = 180 - math.degrees(math.atan2(node1_pos[1] - node2_pos[1],
                                                      node1_pos[0] - node2_pos[0]))
             # node1_pos the rotation
-            if rotation > 90 and rotation < 270:
+            if 90 < rotation < 270:
                 rotation -= 180
             # Convert to radians
             rrotation = math.radians(rotation)
@@ -455,7 +387,7 @@ class EngDisplay:
                 text_color = "white"
             self.canvas.create_text(midx, midy, text=text,
                                     fill=text_color, font=font.Font(family='Courier New', size=text_size),
-                                    justify=tk.LEFT, angle=rotation, tags=['scale', 'obj'])
+                                    justify=tk.LEFT, tags=['scale', 'obj'])  # angle=rotation
         if dashed is True:
             self.canvas.create_line(node1_pos[0], node1_pos[1], node2_pos[0], node2_pos[1], fill=color, dash=(1, 5),
                                     tags="obj")

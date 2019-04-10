@@ -11,8 +11,8 @@ import threading
 from algorithms.helpers.node import Node
 from backend import Backend
 from battery import volts_to_percentage
-from meas_history import MeasHistory
 import config
+from meas_history import MeasHistory
 
 
 ########
@@ -37,7 +37,7 @@ class Main:
             self.log_file = open("log-{}.log".format(datetime.now().strftime("%Y%m%d-%H%M%S")), 'w')
 
         # Thread for piping stdin to the serial port (for manually typing commands)
-        serial_sender = SerialSender(outputPipe=self.src)
+        serial_sender = SerialSender(output_pipe=self.src)
         serial_sender.start()
 
         # Load algorithm
@@ -45,9 +45,8 @@ class Main:
         self.algorithm = getattr(alg_module, alg_name)
 
         # Connect to backend
-        if not self.multi_pipe:
-            self.backend = Backend()
-        else:
+        self.backend = Backend()
+        if self.multi_pipe:
             for node_id, node in Main.r_nodes.items():
                 node.set_pipe(self.multi_pipe)
 
@@ -63,19 +62,9 @@ class Main:
 
     def run(self):
         self.multi_pipe.send("Hey, @realMainThread here. I’m alive.") if self.multi_pipe else None
-        self.multi_pipe.send("Test!") if self.multi_pipe else None
-        cmd_obj = {
-            "cmd": "draw_circle",
-            "args": {
-                "x": 100,
-                "y": 100,
-                "r": 25
-            }
-        }
-        self.multi_pipe.send(cmd_obj) if self.multi_pipe else None
 
         # Clear out the backend of stale data
-        self.multi_pipe.send({"cmd": "backend_clear_nodes"}) if self.multi_pipe else self.backend.clear_nodes()
+        self.backend.clear_nodes()
 
         line_ctr = 0
         packet_ctr = 0
@@ -130,8 +119,8 @@ class Main:
     r_cycle_data = []
     r_cycle_history = []
     r_nodes = {
-        "0": Node("0", "Base 1", is_base=True, x=47000, y=0),
-        "1": Node("1", "Base 2", is_base=True, x=0, y=0),
+        "0": Node("0", "Base 2", is_base=True, x=0, y=0),
+        "1": Node("1", "Base 1", is_base=True, x=67500, y=0),
         "2": Node("2", "Node 1"),
         "3": Node("3", "Node 2"),
         "4": Node("4", "Node 3"),
@@ -141,14 +130,14 @@ class Main:
     resolved_ctr = 0
 
     def algorithm_callback(self, nodes, _t, _n):
-        # self.multi_pipe.send({"cmd": "backend_clear_nodes"}) if self.multi_pipe else self.backend.clear_nodes()
+        # self.backend.clear_nodes()
         for node_id, node in nodes.items():
-            self.multi_pipe.send({"cmd": "backend_update_node", "args": node}) if self.multi_pipe \
-                else self.backend.update_node(node)
+            self.backend.update_node(node)
             if not node.is_base and node.is_resolved():
                 Main.resolved_ctr += 1
 
-    def get_key_from_nodes(self, node_id_1, node_id_2):
+    @staticmethod
+    def get_key_from_nodes(node_id_1, node_id_2):
         n1 = int(node_id_1)
         n2 = int(node_id_2)
         if n1 > n2:
@@ -214,20 +203,7 @@ class Main:
         p_heading = float(p_heading)
         p_temp = float(p_temp)
         p_batt = volts_to_percentage(float(p_batt))
-        # self.multi_pipe.send(
-        #     {"cmd": "backend_update_node_heading", "args": {"id": p_from, "heading": p_heading}}) if self.multi_pipe \
-        #     else self.backend.update_node_heading(p_from, p_heading, "TELEMETRY")
-        # self.multi_pipe.send(
-        #     {"cmd": "backend_update_node_temp", "args": {"id": p_from, "temp": p_temp}}) if self.multi_pipe \
-        #     else self.backend.update_node_temp(p_from, p_temp)
-        # self.multi_pipe.send(
-        #     {"cmd": "backend_update_node_batt", "args": {"id": p_from, "batt": p_batt}}) if self.multi_pipe \
-        #     else self.backend.update_node_batt(p_from, p_batt)
-        self.multi_pipe.send(
-            {"cmd": "backend_update_node_telemetry",
-             "args": {"id": p_from, "temp": p_temp, "batt": p_batt, "heading": p_heading,
-                      "source": "TELEMETRY"}}) if self.multi_pipe \
-            else self.backend.update_node_telemetry(p_from, p_temp, p_batt, p_heading, "TELEMETRY")
+        self.backend.update_node_telemetry(p_from, p_temp, p_batt, p_heading, "TELEMETRY")
 
 
 #################
@@ -236,17 +212,17 @@ class Main:
 # Allows user input from the main console to be piped directly to the 
 # Serial interface.
 class SerialSender(threading.Thread):
-    def __init__(self, outputPipe):
+    def __init__(self, output_pipe):
         super().__init__()
-        self.outputPipe = outputPipe
+        self.output_pipe = output_pipe
 
     def run(self):
         # Infinite loop (kinda sucks)
-        while (True):
+        while True:
             # See if we have anything to read in
             if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
                 # If we do, then write it directly to the serial interface
-                self.outputPipe.write(bytes(sys.stdin.readline(), 'utf-8'))
+                self.output_pipe.write(bytes(sys.stdin.readline(), 'utf-8'))
             # Sleep for a little so that the infinite loop doesnt kill the CPU
             time.sleep(0.1)
 

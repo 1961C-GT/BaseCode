@@ -1,10 +1,11 @@
-from sgqlc.endpoint.http import HTTPEndpoint
-
-import config
-from pygeodesy.sphericalNvector import LatLon
-from statistics import mean
-from algorithms.helpers.node import Node
 import math
+from pygeodesy.sphericalNvector import LatLon
+from sgqlc.endpoint.http import HTTPEndpoint
+from statistics import mean
+import threading
+
+from algorithms.helpers.node import Node
+import config
 
 
 class Backend:
@@ -13,6 +14,9 @@ class Backend:
         self.base_2_node: Node = None
         self.endpoint = HTTPEndpoint(config.BACKEND_URL)
 
+        # Uncomment following line to disable backend updates
+        # self.endpoint = lambda x: None
+
     def clear_nodes(self):
         mutation = \
             """
@@ -20,7 +24,7 @@ class Backend:
               clearNodes
             }       
             """
-        self.endpoint(mutation)
+        threading.Thread(target=lambda: self.endpoint(mutation)).start()
 
     def update_node(self, node):
         if not node.is_resolved():
@@ -44,10 +48,10 @@ class Backend:
             }
             """
 
-        if node.id == "1":
+        if node.id == "0":
             self.base_1_node = node
             lat, lon = config.BASE_1_GPS
-        elif node.id == "0":
+        elif node.id == "1":
             self.base_2_node = node
             # lat, lon = config.BASE_2_GPS  # could do this, but can also be sanity check for GPS translator
             lat, lon = self.translate_node_to_gps_coords(node)
@@ -61,71 +65,7 @@ class Backend:
             'lat': lat,
             'lon': lon
         }
-        self.endpoint(mutation)
-
-    def update_node_heading(self, n_id, heading, source="TELEMETRY"):
-        mutation = \
-            """
-            mutation {
-              updateNode(id: "%(id)s", node: {
-                pose: {
-                  orientation: {
-                    heading: %(heading).2f
-                    source: %(source)s
-                  }
-                }
-              }) {
-                id
-              }
-            }
-            """
-
-        mutation = mutation % {
-            'id': n_id,
-            'heading': heading,
-            'source': source
-        }
-        self.endpoint(mutation)
-
-    def update_node_temp(self, n_id, temp):
-        mutation = \
-            """
-            mutation {
-              updateNode(id: "%(id)s", node: {
-                telemetry: {
-                  temp: %(temp).2f
-                }
-              }) {
-                id
-              }
-            }
-            """
-
-        mutation = mutation % {
-            'id': n_id,
-            'temp': temp
-        }
-        self.endpoint(mutation)
-
-    def update_node_batt(self, n_id, batt):
-        mutation = \
-            """
-            mutation {
-              updateNode(id: "%(id)s", node: {
-                telemetry: {
-                  batt: %(batt).2f
-                }
-              }) {
-                id
-              }
-            }
-            """
-
-        mutation = mutation % {
-            'id': n_id,
-            'batt': batt
-        }
-        self.endpoint(mutation)
+        threading.Thread(target=lambda: self.endpoint(mutation)).start()
 
     def update_node_telemetry(self, n_id, temp, batt, heading, source="TELEMETRY"):
         mutation = \
@@ -155,7 +95,7 @@ class Backend:
             'heading': heading,
             'source': source
         }
-        self.endpoint(mutation)
+        threading.Thread(target=lambda: self.endpoint(mutation)).start()
 
     def translate_node_to_gps_coords(self, node):
         if not self.base_1_node or not self.base_2_node:
