@@ -21,6 +21,8 @@ from meas_history import MeasHistory
 
 class Main:
 
+    UPLOAD_TO_UI = False
+
     def __init__(self, src=None, alg_name='multi_tri', multi_pipe=None):
 
         self.PACKET_PROCESSORS = {"Range Packet": self.process_range, "Stats Packet": self.process_stats}
@@ -64,7 +66,8 @@ class Main:
         self.multi_pipe.send("Hey, @realMainThread here. I’m alive.") if self.multi_pipe else None
 
         # Clear out the backend of stale data
-        self.backend.clear_nodes()
+        if Main.UPLOAD_TO_UI:
+            self.backend.clear_nodes()
 
         line_ctr = 0
         packet_ctr = 0
@@ -132,7 +135,8 @@ class Main:
     def algorithm_callback(self, nodes, _t, _n):
         # self.backend.clear_nodes()
         for node_id, node in nodes.items():
-            self.backend.update_node(node)
+            if Main.UPLOAD_TO_UI:
+                self.backend.update_node(node)
             if not node.is_base and node.is_resolved():
                 Main.resolved_ctr += 1
 
@@ -203,7 +207,8 @@ class Main:
         p_heading = float(p_heading)
         p_temp = float(p_temp)
         p_batt = volts_to_percentage(float(p_batt))
-        self.backend.update_node_telemetry(p_from, p_temp, p_batt, p_heading, "TELEMETRY")
+        if Main.UPLOAD_TO_UI:
+            self.backend.update_node_telemetry(p_from, p_temp, p_batt, p_heading, "TELEMETRY")
 
 
 #################
