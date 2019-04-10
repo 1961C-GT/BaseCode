@@ -7,15 +7,14 @@ import threading
 from algorithms.helpers.node import Node
 import config
 
+ENABLE_BACKEND = True
+
 
 class Backend:
     def __init__(self):
         self.base_1_node: Node = None
         self.base_2_node: Node = None
-        self.endpoint = HTTPEndpoint(config.BACKEND_URL)
-
-        # Uncomment following line to disable backend updates
-        # self.endpoint = lambda x: None
+        self.endpoint = HTTPEndpoint(config.BACKEND_URL) if ENABLE_BACKEND else lambda x: None
 
     def clear_nodes(self):
         mutation = \
