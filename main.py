@@ -203,7 +203,7 @@ class Main:
         p_heading = float(p_heading)
         p_temp = float(p_temp)
         p_batt = volts_to_percentage(float(p_batt))
-        self.backend.update_node_telemetry(p_from, p_temp, p_batt, p_heading, "TELEMETRY")
+        self.backend.update_node_telemetry(Main.r_nodes[p_from], p_temp, p_batt, p_heading, "TELEMETRY")
 
 
 #################
