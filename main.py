@@ -21,21 +21,6 @@ from meas_history import MeasHistory
 
 class Main:
 
-    AUTO_SETUP_BASE = False
-    MANUAL_BASE_DIST = 47000  # Units in mm. Only used if AUTO_SETUP_BASE is False
-
-    ANCHORED_BASE = "0"       # Base station whose position will be fixed as (0, 0)
-    CALCULATED_BASE = "1"     # Base station whose position will be varied
-
-    r_nodes = {
-        "0": Node("0", "Base 2", is_base=True, x=0, y=0),
-        "1": Node("1", "Base 1", is_base=True, x=0, y=0),
-        "2": Node("2", "Node 1"),
-        "3": Node("3", "Node 2"),
-        "4": Node("4", "Node 3"),
-        "5": Node("5", "Node 4"),
-    }
-
     def __init__(self, src=None, alg_name='multi_tri', multi_pipe=None):
 
         self.PACKET_PROCESSORS = {"Range Packet": self.process_range, "Stats Packet": self.process_stats}
@@ -60,7 +45,7 @@ class Main:
         self.algorithm = getattr(alg_module, alg_name)
 
         # Connect to backend
-        self.backend = Backend()
+        self.backend = Backend(Main.ANCHORED_BASE, Main.CALCULATED_BASE)
         if self.multi_pipe:
             for node_id, node in Main.r_nodes.items():
                 node.set_pipe(self.multi_pipe)
@@ -77,6 +62,7 @@ class Main:
                 self.history[name] = MeasHistory(name, max_meas=100, min_vals=5)
             else:
                 self.history[name] = MeasHistory(name)
+        self.node_list = Main.r_nodes
 
     def run(self):
         self.multi_pipe.send("Hey, @realMainThread here. I’m alive.") if self.multi_pipe else None
@@ -131,6 +117,42 @@ class Main:
     #####################
     # Packet processors #
     #####################
+
+    AUTO_SETUP_BASE = config.AUTO_SETUP_BASE
+    MANUAL_BASE_DIST = config.MANUAL_BASE_DIST
+
+    ANCHORED_BASE = None
+    CALCULATED_BASE = None
+
+    r_nodes = {}
+    for node_id, details in config.NODES.items():
+        print(node_id)
+        print(details)
+        if 'name' not in details:
+            print('INVALID NODE SETUP: All nodes require the "name" attribute in config.py.')
+            exit()
+            continue
+        if 'is_base' in details and details['is_base'] is True:
+            r_nodes[node_id] = Node(details['name'], is_base=True)
+            if 'base_type' in details:
+                if details['base_type'] == 'anchored':
+                    if ANCHORED_BASE is None:
+                        ANCHORED_BASE = node_id
+                    else:
+                        print('INVALID NODE SETUP: Only one node may have the "anchored" attribute.')
+                        exit()
+                elif details['base_type'] == 'calculated':
+                    if CALCULATED_BASE is None:
+                        CALCULATED_BASE = node_id
+                    else:
+                        print('INVALID NODE SETUP: Only one node may have the "calculated" attribute.')
+                        exit()
+        else:
+            r_nodes[node_id] = Node(details['name'])
+        
+    if ANCHORED_BASE is None or CALCULATED_BASE is None:
+        print('INVALID NODE SETUP: Two base stations must be specified, and each needs to be "calculated" or "anchored" in type.')
+        exit()
 
     r_current_cycle = None
     r_cycle_offset = None
@@ -188,10 +210,10 @@ class Main:
             Main.r_cycle_history.insert(0, Main.r_cycle_data)
 
             if self.multi_pipe is None:
-                self.algorithm(Main.r_nodes, [Main.ANCHORED_BASE, Main.CALCULATED_BASE])._process(self.algorithm_callback)
+                self.algorithm(Main.r_nodes, Main.ANCHORED_BASE, Main.CALCULATED_BASE)._process(self.algorithm_callback)
             else:
                 self.multi_pipe.send({"cmd": "frame_start", "args": None})
-                self.algorithm(Main.r_nodes, [Main.ANCHORED_BASE, Main.CALCULATED_BASE])._process(self.algorithm_callback, multi_pipe=self.multi_pipe)
+                self.algorithm(Main.r_nodes, Main.ANCHORED_BASE, Main.CALCULATED_BASE)._process(self.algorithm_callback, multi_pipe=self.multi_pipe)
                 self.multi_pipe.send({"cmd": "frame_end", "args": None})
 
             # Keep track of cycle count in a way that's not affected by system reboots
@@ -215,6 +237,8 @@ class Main:
                 
                 if Main.AUTO_SETUP_BASE and name == Main.auto_base_meas_key and avg != 0:
                     Main.r_nodes[Main.CALCULATED_BASE].set_real_x_pos(avg)
+            
+            # time.sleep(0.25)
 
         key = self.get_key_from_nodes(p_from, p_to)
         self.history[key].add_measurement(p_range)
@@ -226,6 +250,15 @@ class Main:
         p_temp = float(p_temp)
         p_batt = volts_to_percentage(float(p_batt))
         self.backend.update_node_telemetry(Main.r_nodes[p_from], p_temp, p_batt, p_heading, "TELEMETRY")
+        self.multi_pipe.send({
+            'cmd':'status_update',
+            'args':{
+                'node_id': p_from,
+                'bat': p_batt,
+                'temp': p_temp,
+                'heading': p_heading 
+            }
+        })
 
 
 #################
@@ -242,11 +275,14 @@ class SerialSender(threading.Thread):
         # Infinite loop (kinda sucks)
         while True:
             # See if we have anything to read in
-            if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-                # If we do, then write it directly to the serial interface
-                self.output_pipe.write(bytes(sys.stdin.readline(), 'utf-8'))
-            # Sleep for a little so that the infinite loop doesnt kill the CPU
-            time.sleep(0.1)
+            try:
+                if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+                    # If we do, then write it directly to the serial interface
+                    self.output_pipe.write(bytes(sys.stdin.readline(), 'utf-8'))
+                # Sleep for a little so that the infinite loop doesnt kill the CPU
+                time.sleep(0.1)
+            except ValueError:  # We closed the pipe
+                return
 
 
 if __name__ == "__main__":

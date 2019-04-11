@@ -11,7 +11,9 @@ ENABLE_BACKEND = True
 
 
 class Backend:
-    def __init__(self):
+    def __init__(self, base_1_id, base_2_id):
+        self.base_1_id = base_1_id
+        self.base_2_id = base_2_id
         self.base_1_node: Node = None
         self.base_2_node: Node = None
         self.endpoint = HTTPEndpoint(config.BACKEND_URL) if ENABLE_BACKEND else lambda x: None
@@ -47,10 +49,10 @@ class Backend:
             }
             """
 
-        if node.id == "0":
+        if node.id == self.base_1_id:
             self.base_1_node = node
             lat, lon = config.BASE_1_GPS
-        elif node.id == "1":
+        elif node.id == self.base_2_id:
             self.base_2_node = node
             # lat, lon = config.BASE_2_GPS  # could do this, but can also be sanity check for GPS translator
             lat, lon = self.translate_node_to_gps_coords(node)

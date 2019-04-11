@@ -1,4 +1,5 @@
 import numpy
+import config
 
 class MeasHistory:
 
@@ -6,7 +7,7 @@ class MeasHistory:
     MIN_DIST = 750    # mm
     MAX_DIST = 500000 # mm
 
-    def __init__(self, key, max_meas=MAX_MEAS, min_vals=5):
+    def __init__(self, key, max_meas=config.MAX_HISTORY, min_vals=5):
         self.key = key
         self.node1, self.node2 = self.key.split('-')
         self.meas_list = []

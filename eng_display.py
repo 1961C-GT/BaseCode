@@ -2,14 +2,16 @@
 
 import math
 import time
+from sys import platform
 
 import tkinter as tk
 from tkinter import font
 from tkinter import *
 from multiprocessing import Process, Pipe
+from algorithms.algorithm import Vector2
 
 from main import Main
-from backend import Backend
+# from backend import Backend
 
 
 class ResizingCanvas(Canvas):
@@ -25,6 +27,9 @@ class ResizingCanvas(Canvas):
         self.x_offset = 0
         self.y_offset = 0
         self.move_by(self.width / 4, 100)
+        # self.move_by(0, 0)
+        self.callback = None
+        self.last_resize = None
 
         # self.scan_mark(self.scan_x,self.scan_y)
 
@@ -38,47 +43,44 @@ class ResizingCanvas(Canvas):
         self.height = event.height
         # resize the canvas 
         self.scale("bg", 0, 0, wscale, hscale)
-        self.canvas_shift((self.width - old_width) / 2, (self.height - old_height) / 2)
+        # self.canvas_shift((self.width - old_width) / 2, (self.height - old_height) / 2)
+        self.canvas_shift(0, 0)
+        if self.callback is not None:
+            self.callback(event)
+        self.last_resize = event
+
+    def assign_resize_callback(self, callback):
+        self.callback = callback
+        if self.last_resize is not None:
+            self.callback(self.last_resize)
 
     def canvas_shift(self, x, y):
-        self.x_offset = self.x_offset - x
-        self.y_offset = self.y_offset - y
+        # self.x_offset = self.x_offset - x
+        # self.y_offset = self.y_offset - y
         self.move_by(x, y)
 
     def move_by(self, x, y):
         self.x_pos = self.x_pos + x
         self.y_pos = self.y_pos + y
-        self.scan_dragto(int(self.x_pos / 10), int(self.y_pos / 10))
+        # self.scan_dragto(int(self.x_pos / 10), int(self.y_pos / 10))
+        # self.x_pos = self.x_pos - x
+        # self.y_pos = self.y_pos - y
+        # coords=self.coords('obj-bg')
+        # print(coords)
+        # if coords == []:
+            # return
+        # else:
+            # exit
+        # movex=self.x_pos-coords[0]
+        # movey=self.y_pos-coords[1]
+        # self.move('obj-bg', movex, movey)
+        self.move('obj', x, y)
+        self.move('obj-bg', x, y)
 
-    def move_to(self, x, y):
-        self.x_pos = x
-        self.y_pos = y
-        self.scan_dragto(int(self.x_pos / 10), int(self.y_pos / 10))
-
-
-# Message Structures
-# {
-#   "cmd": "draw_circle",
-#   "args": {
-#       "x": 200,
-#       "y": 300,
-#       "r": 50
-#   }
-# }
-# 
-# {
-#   "cmd": "frame_start"
-#   "args": None
-# }
-# 
-# {
-#   "cmd": "clear_screen"
-#   "args": None
-# }
 
 class EngDisplay:
     def __init__(self, src=None):
-        self.backend = Backend()
+        # self.backend = Backend(node_1, node_2)
         self.parent_conn, self.child_conn = Pipe()
         self.data_src = src
         self.main = Main(src, multi_pipe=self.child_conn)
@@ -100,10 +102,25 @@ class EngDisplay:
 
     def create_eng_display(self):
         self.window = tk.Tk()
+        img = tk.Image("photo", file="icon.png")
+        # Check if we're on OS X, first.
+        if platform == 'darwin':
+            try:
+                from Foundation import NSBundle
+                bundle = NSBundle.mainBundle()
+                if bundle:
+                    info = bundle.localizedInfoDictionary() or bundle.infoDictionary()
+                    if info and info['CFBundleName'] == 'Python':
+                        info['CFBundleName'] = "MNSLAC"
+            except:
+                print("NOTICE: To allow edits of Mac application names, install 'pyobjc' via 'pip3 install pyobjc'")
+        # root.iconphoto(True, img) # you may also want to try this.
+        self.window.tk.call('wm','iconphoto', self.window._w, img)
         self.myframe = Frame(self.window)
         self.myframe.pack(fill=BOTH, expand=YES)
         w, h = self.window.winfo_screenwidth(), self.window.winfo_screenheight()
         self.canvas = ResizingCanvas(self.myframe, width=w, height=h, borderwidth=0, bg="#22252b", highlightthickness=0)
+        self.window.wm_title(f"MNSLAC Engineering Display")
         self.canvas.pack(fill=BOTH, expand=YES)
         self.zoom(3)
         # root.resizable(width=False, height=False)
@@ -112,13 +129,13 @@ class EngDisplay:
         # self.canvas.grid(column=0, row=0, columnspan=30)
         # self.canvas.create_rectangle(-2500, -300, 3000, 4250, fill="#22242a")
         # Add menu
-        self.menu_bar = Menu(self.window)
-        self.file_menu = Menu(self.menu_bar, tearoff=0)
-        self.file_menu.add_command(label="Exit", command=self.window.quit, accelerator="Cmd+q")
-        self.menu_bar.add_cascade(label="File", menu=self.file_menu)
-        self.help_menu = Menu(self.menu_bar, tearoff=0)
-        self.menu_bar.add_cascade(label="Help", menu=self.help_menu)
-        self.window.config(menu=self.menu_bar)
+        # self.menu_bar = Menu(self.window)
+        # self.file_menu = Menu(self.menu_bar, tearoff=0)
+        # self.file_menu.add_command(label="Exit", command=self.window.quit, accelerator="Cmd+q")
+        # self.menu_bar.add_cascade(label="File", menu=self.file_menu)
+        # self.help_menu = Menu(self.menu_bar, tearoff=0)
+        # self.menu_bar.add_cascade(label="Help", menu=self.help_menu)
+        # self.window.config(menu=self.menu_bar)
 
         # Bind these functions to motion, press, and release
         self.canvas.bind('<Motion>', self.measure)
@@ -131,10 +148,20 @@ class EngDisplay:
         self.window.bind('<Right>', lambda e: self.canvas.move_by(-self.move_amt, 0))
         self.canvas.bind('<ButtonRelease-1>', self.stop_measure)
 
-        # for x in range(-1000, 1000, 100):
-            # self.canvas.create_line(x, 1000, x, -1000, fill="white",tags="obj-bg")
-
         self.canvas.addtag_all("bg")
+
+        scale = 25 * 1000  # mm
+        number = 30
+        min_val = -scale * number
+        max_val = scale * number
+        length = scale * number * self.universal_scale * self.meas_to_map
+        for x in range(min_val, max_val, scale):
+            x_tmp = x * self.universal_scale * self.meas_to_map + self.canvas.x_pos
+            self.canvas.create_line(int(x_tmp), int(length), int(x_tmp), int(-length), fill="#303030", tags="obj-bg", dash=(3,10))  # 1D1F25
+        for y in range(min_val, max_val, scale):
+            y_tmp = y * self.universal_scale * self.meas_to_map + self.canvas.y_pos
+            self.canvas.create_line(int(length), int(y_tmp), int(-length), int(y_tmp), fill="#303030", tags="obj-bg", dash=(3,10))
+        # self.canvas.move('obj-bg', 0, -100)
 
         self.window.protocol("WM_DELETE_WINDOW", self.close_callback)
 
@@ -142,53 +169,86 @@ class EngDisplay:
         if not self.update_frame():
             return
 
+        self.dh = 190
+        self.dw = 350
+        self.details=Canvas(self.window, width=self.dw, height=self.dh, bg="#191b1f", highlightthickness=0, borderwidth=0)
+        self.details.create_rectangle(2,2,self.dw-4, self.dh-4, fill="", outline="#303030", dash=(1, 5))
+        self.d_title = self.details.create_text(20, 20, text="Node Details:", fill="white", font=font.Font(family='Courier New', size=14), anchor=tk.NW)
+        self.node_details_list = {}
+        y_pos = 50
+        for node_id, node_obj in self.main.node_list.items():
+            self.node_details_list[node_id] = {
+                'txt_id': self.details.create_text(20, y_pos, text=node_obj.id, fill="white", font=font.Font(family='Courier New', size=12), anchor=tk.NW),
+                'name': node_obj.id,
+                'bat': 0,
+                'temp': 0,
+                'heading': 0,
+                'speed': 0
+            }
+            y_pos += 20
+        # self.d_mouse = self.details.create_text(20, y_pos+10, text="Mouse: (0, 0) meters", fill="white", font=font.Font(family='Courier New', size=12), anchor=tk.NW)
+
+        self.canvas.assign_resize_callback(self.resize_event)
+
+        # self.proc.terminate()
+
         self.main_loop()
+
+    def resize_event(self, event):
+        self.details.place(x=event.width-(self.dw+25), y=event.height-(self.dh+25))
 
     def close_callback(self):
         self.window.destroy()
         self.closed = True
         print('Window Closed!')
+        self.proc.terminate()
 
     def main_loop(self):
         frame_end = False
         receiving = True
         last_update = 0
-        while True:
-            if frame_end is True:
-                if not self.update_frame():
-                    return
-                last_update = time.time()
-                # self.clear_canvas()
-                frame_end = False
-            elif time.time() - last_update > 0.01666666667:
-                if not self.update_frame():
-                    return
-                last_update = time.time()
-            while receiving is True:
-                if self.parent_conn.poll():
-                    msg = self.parent_conn.recv()
-                    if type(msg) == dict and "cmd" in msg:
-                        if "args" not in msg:
-                            continue
-                        if msg['cmd'] == "frame_start":
-                            frame_end = False
-                            self.clear_canvas()
-                        elif msg['cmd'] == "frame_end":
-                            frame_end = True
-                            break
-                        elif msg['cmd'] == "clear_screen":
-                            self.clear_canvas()
-                        elif msg['cmd'] == "draw_circle":
-                            self.draw_circle(msg['args'])
-                        elif msg['cmd'] == "connect_points":
-                            self.connect_points(msg['args'])
+        try:
+            while True:
+                if frame_end is True:
+                    if not self.update_frame():
+                        return
+                    last_update = time.time()
+                    # self.clear_canvas()
+                    frame_end = False
+                elif time.time() - last_update > 0.01666666667:
+                    if not self.update_frame():
+                        return
+                    last_update = time.time()
+                while receiving is True:
+                    if self.parent_conn.poll():
+                        msg = self.parent_conn.recv()
+                        if type(msg) == dict and "cmd" in msg:
+                            if "args" not in msg:
+                                continue
+                            if msg['cmd'] == "frame_start":
+                                frame_end = False
+                                self.clear_canvas()
+                            elif msg['cmd'] == "frame_end":
+                                frame_end = True
+                                break
+                            elif msg['cmd'] == "clear_screen":
+                                self.clear_canvas()
+                            elif msg['cmd'] == "draw_circle":
+                                self.draw_circle(msg['args'])
+                            elif msg['cmd'] == "connect_points":
+                                self.connect_points(msg['args'])
+                            elif msg['cmd'] == "status_update":
+                                self.status_update(msg['args'])
+                            else:
+                                print(f"Unknown command: {msg['cmd']}")
                         else:
-                            print(f"Unknown command: {msg['cmd']}")
+                            print(msg)
                     else:
-                        print(msg)
-                else:
-                    receiving = False
-            receiving = True
+                        receiving = False
+                receiving = True
+        except tk.TclError:
+            print('Close detected. Exit!')
+            exit()
 
     # Interactive features
 
@@ -201,8 +261,9 @@ class EngDisplay:
         return True
 
     def measure(self, event):
+        # txt = "Coordinates: ({}, {}) meters".format(round(x), round(y))
+        # self.details.itemconfig(self.d_mouse, text=txt)
         # Check to see if we are measuring
-        (x, y) = self.translate_screen_pos_to_canvas_pos(event.x, event.y)
         if self.measuring:
             # Try to remove the old elements
             try:
@@ -210,6 +271,9 @@ class EngDisplay:
                 event.widget.delete(self.cur_line_txt)
             except:
                 pass
+            (x, y) = self.translate_screen_pos_to_canvas_pos(event.x, event.y)
+            x = x + self.canvas.x_pos
+            y = y + self.canvas.y_pos
             # Calculate the rotation between the two points
             rotation = 180 - math.degrees(math.atan2(self.start_pos[1] - y,
                                                      self.start_pos[0] - x))
@@ -238,20 +302,32 @@ class EngDisplay:
         if x is None or y is None:
             x = self.window.winfo_pointerx() - self.window.winfo_rootx()
             y = self.window.winfo_pointery() - self.window.winfo_rooty()
-        (x, y) = self.translate_screen_pos_to_canvas_pos(x, y)
-        self.canvas.scale("obj", x, y, scale, scale)
-        self.canvas.scale("obj-bg", x, y, scale, scale)
+        # (x, y) = self.translate_screen_pos_to_canvas_pos(0, 0)
+        # x = x + self.canvas.x_pos
+        # y = y + self.canvas.y_pos
+        # print(x, y)
+        # x = 0
+        # y = 0
+        # self.canvas.scale("obj", x, y, scale, scale)
+        # self.canvas.scale("obj-bg", x, y, scale, scale)
+
+
+        old_scale = self.universal_scale
         self.universal_scale *= scale
+        self.canvas.scale("obj", self.canvas.x_pos, self.canvas.y_pos, scale, scale)
+        self.canvas.scale("obj-bg", self.canvas.x_pos, self.canvas.y_pos, scale, scale)
 
     def translate_screen_pos_to_canvas_pos(self, x, y):
-        return x - self.canvas.x_pos, y - self.canvas.y_pos
+        return x - self.canvas.x_pos - self.canvas.x_offset, y - self.canvas.y_pos - self.canvas.y_offset
 
     def translate_canvas_pos_to_screen_pos(self, x, y):
-        return x + self.canvas.x_pos, y + self.canvas.y_pos
+        return x + self.canvas.x_pos + self.canvas.x_offset, y + self.canvas.y_pos + self.canvas.y_offset
 
     def start_measure(self, event):
         # Save the initial point
         (x, y) = self.translate_screen_pos_to_canvas_pos(event.x, event.y)
+        x = x + self.canvas.x_pos
+        y = y + self.canvas.y_pos
         self.start_pos = (x, y)
         # Set measuring to True
         self.measuring = True
@@ -266,8 +342,8 @@ class EngDisplay:
         # Include globals
         # Set measuring to False
         self.measuring = False
-
         now_pos = self.translate_screen_pos_to_canvas_pos(event.x, event.y)
+        now_pos = (now_pos[0] + self.canvas.x_pos, now_pos[1] + self.canvas.y_pos)
         if self.start_pos[0] == now_pos[0] and self.start_pos[1] == now_pos[1]:
             self.zoom(1.1)
         # Try to remove the old elements
@@ -290,6 +366,23 @@ class EngDisplay:
             return None
 
 
+    def status_update(self, args):
+        node_id = self.get_val_from_args(args, "node_id")
+        bat = self.get_val_from_args(args, "bat")
+        temp = self.get_val_from_args(args, "temp")
+        heading = self.get_val_from_args(args, "heading")
+
+        if node_id is None or bat is None or temp is None:
+            print(f"Invalid args input for function 'status_update': {args}")
+            return
+
+        if node_id not in self.node_details_list:
+            print(f"Node '{node_id}' not in the details list. Command 'status_update'.")
+            return
+
+        txt = "{:<7}| BAT {:<4}, TEMP {:<5}, HDG {}".format(self.node_details_list[node_id]['name'], str(round(bat))+"%", str(round(temp))+"°C", str(round(heading))+"°")
+        self.details.itemconfig(self.node_details_list[node_id]['txt_id'], text=txt)
+
     def draw_circle(self, args):
         x = self.get_val_from_args(args, "x")
         y = self.get_val_from_args(args, "y")
@@ -299,6 +392,9 @@ class EngDisplay:
         outline = self.get_val_from_args(args, "outline")
         width = self.get_val_from_args(args, "width")
         text = self.get_val_from_args(args, "text")
+        text_color = self.get_val_from_args(args, "text_color")
+        text_size = self.get_val_from_args(args, "text_size")
+        text_y_bias = self.get_val_from_args(args, "text_y_bias")
         if x is None or y is None or r is None:
             print(f"Invalid args input for function 'draw_circle': {args}")
             return
@@ -314,16 +410,23 @@ class EngDisplay:
             outline = "white"
         if width is None:
             width = 3
+        if text_color is None:
+            text_color = "white"
+        if text_size is None:
+            text_size = 14
         x = x * self.meas_to_map
         y = y * self.meas_to_map
         r = r * self.meas_to_map
         self.create_circle(x, y, r, extra_tags=tags, fill=fill, width=width, outline=outline)
 
         if text is not None:
-            ypos = y - r - 20
-            if ypos < 0:
-                ypos = y + r + 20
-            self.create_text(x, ypos, text=text)
+            if text_y_bias is None:
+                ypos = y - r - 20
+                if ypos < 0:
+                    ypos = y + r + 20
+            else:
+                ypos = text_y_bias
+            self.create_text(x, ypos, text=text, color=text_color, size=text_size)
 
     def connect_points(self, args):
         pos1 = self.get_val_from_args(args, "pos1")
@@ -360,11 +463,11 @@ class EngDisplay:
         tags = ["obj"]
         return self.canvas.create_oval(x - r, y - r, x + r, y + r, tags=(tags + extra_tags), **kwargs)
 
-    def create_text(self, x, y, text="", extra_tags=[], **kwargs):
+    def create_text(self, x, y, text="", color="white", size=14, extra_tags=[], **kwargs):
         (x, y) = self.translate_canvas_pos_to_screen_pos(x, y)
         tags = ["obj"]
         self.canvas.create_text(x, y, text=text,
-                                fill="white", font=font.Font(family='Courier New', size=14),
+                                fill=color, font=font.Font(family='Courier New', size=size),
                                 justify=tk.LEFT, tags=(tags + extra_tags))
 
     def _connect_points(self, node1_pos, node2_pos, text=None, text_size=None, text_color=None, dashed=True,
