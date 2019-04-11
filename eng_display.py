@@ -163,6 +163,13 @@ class EngDisplay:
             self.canvas.create_line(int(length), int(y_tmp), int(-length), int(y_tmp), fill="#303030", tags="obj-bg", dash=(3,10))
         # self.canvas.move('obj-bg', 0, -100)
 
+        # load the .gif image file
+        mnslac_icon = PhotoImage(file='icon-small.png')
+
+        # put gif image on canvas
+        # pic's upper left corner (NW) on the canvas is at x=50 y=10
+        self.icon = self.canvas.create_image(w-10, 10, image=mnslac_icon, anchor=NE)
+
         self.window.protocol("WM_DELETE_WINDOW", self.close_callback)
 
         self.create_circle(100, 100, 100)
@@ -196,6 +203,8 @@ class EngDisplay:
 
     def resize_event(self, event):
         self.details.place(x=event.width-(self.dw+25), y=event.height-(self.dh+25))
+        coords = self.canvas.coords(self.icon)
+        self.canvas.move(self.icon, (event.width-10) - coords[0], 0)
 
     def close_callback(self):
         self.window.destroy()
