@@ -49,10 +49,10 @@ class Backend:
 
         if node.id == self.anchored_base_id:
             self.anchored_base_node = node
-            lat, lon = config.BASE_1_GPS
+            lat, lon = config.ANCHORED_BASE_GPS
         elif node.id == self.calculated_base_id:
             self.calculated_base_node = node
-            # lat, lon = config.BASE_2_GPS  # could do this, but can also be sanity check for GPS translator
+            # lat, lon = config.CALCULATED_BASE_GPS  # could do this, but can also be sanity check for GPS translator
             lat, lon = self.translate_node_to_gps_coords(node)
         else:
             lat, lon = self.translate_node_to_gps_coords(node)
@@ -110,12 +110,11 @@ class Backend:
         real_base_distance = anchored_base.distanceTo(calculated_base)
         distance_scale = real_base_distance / virtual_base_distance
         heading_offset = mean([anchored_base.initialBearingTo(calculated_base), calculated_base.initialBearingTo(anchored_base) - 180]) - 90
-        twwqtw
         # Transform node virtual coordinates
         new_x, new_y = self.rotate_point((node.x * distance_scale, node.y * distance_scale), heading_offset)
         n_d, n_a = math.sqrt(math.pow(new_x, 2) + math.pow(new_y, 2)), 90 - math.degrees(math.atan2(-new_y, new_x))
 
-        # Add to base_1 GPS coords
+        # Add to anchored base GPS coords
         node_gps = anchored_base.destination(n_d, n_a)
         return node_gps.latlon2(ndigits=6)
 

@@ -15,7 +15,7 @@ MAX_HISTORY = 20  # How many historical cycles to feed to algorithm
 # Backend config #
 ##################
 
-ENABLE_BACKEND = False
+ENABLE_BACKEND = True
 BACKEND_URL = "https://web.mnslac.xtriage.com/graphql"
 
 ###############

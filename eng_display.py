@@ -3,25 +3,20 @@
 import math
 import time
 from sys import platform
-import glob
-import serial
 
 import tkinter as tk
 from tkinter import font
 from tkinter import *
 from multiprocessing import Process, Pipe
-import threading
 from eng_colors import EngColors
-from algorithms.algorithm import Vector2
 
 from main import Main
 import config
-# from backend import Backend
 
 
 class EngDisplay:
     def __init__(self, src=None, use_light_theme=False):
-        # Check if we're on OS X, first.
+        # Check if we're on macOS, first.
         if platform != 'darwin':
             print('This display only supports OSX platforms. Run \'main.py\' directly on other platforms.')
             return

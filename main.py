@@ -112,7 +112,7 @@ class Main:
                                 else:
                                     self.pause_time = 1/float(msg['speed'])
                     if paused:
-                        time.sleep(0.01)
+                        time.sleep(0.1)
                 do = True
             try:
                 # Try to decode 'bytes' from serial
