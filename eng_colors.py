@@ -1,5 +1,6 @@
 
-INSTANCE=None
+INSTANCE = None
+
 
 class EngColors:
     def __init__(self, use_dark=True):

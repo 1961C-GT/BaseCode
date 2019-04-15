@@ -110,7 +110,7 @@ class Main:
                                 if float(msg['speed']) == 0:
                                     self.pause_time = 0
                                 else:
-                                    self.pause_time = 1/float(msg['speed'])
+                                    self.pause_time = 1 / float(msg['speed'])
                     if paused:
                         time.sleep(0.1)
                 do = True
@@ -185,9 +185,10 @@ class Main:
                         exit()
         else:
             r_nodes[node_id] = Node(node_id, details['name'])
-        
+
     if ANCHORED_BASE is None or CALCULATED_BASE is None:
-        print('INVALID NODE SETUP: Two base stations must be specified, and each needs to be "calculated" or "anchored" in type.')
+        print(
+            'INVALID NODE SETUP: Two base stations must be specified, and each needs to be "calculated" or "anchored" in type.')
         exit()
 
     config.ANCHORED_BASE = ANCHORED_BASE
@@ -252,7 +253,8 @@ class Main:
                 self.algorithm(Main.r_nodes, Main.ANCHORED_BASE, Main.CALCULATED_BASE)._process(self.algorithm_callback)
             else:
                 self.multi_pipe.send({"cmd": "frame_start", "args": None})
-                self.algorithm(Main.r_nodes, Main.ANCHORED_BASE, Main.CALCULATED_BASE)._process(self.algorithm_callback, multi_pipe=self.multi_pipe)
+                self.algorithm(Main.r_nodes, Main.ANCHORED_BASE, Main.CALCULATED_BASE)._process(self.algorithm_callback,
+                                                                                                multi_pipe=self.multi_pipe)
                 self.multi_pipe.send({"cmd": "frame_end", "args": None})
 
             # Keep track of cycle count in a way that's not affected by system reboots
@@ -273,19 +275,18 @@ class Main:
                 if avg != 0:
                     Main.r_nodes[n1].add_measurement(Main.r_nodes[n2], avg, std=std)
                     Main.r_nodes[n2].add_measurement(Main.r_nodes[n1], avg, std=std)
-                
+
                 if Main.AUTO_SETUP_BASE and name == Main.auto_base_meas_key and avg != 0:
                     Main.r_nodes[Main.CALCULATED_BASE].set_real_x_pos(avg)
 
             if self.pause_time > 0:
                 time.sleep(self.pause_time)
-        
 
         key = self.get_key_from_nodes(p_from, p_to)
         if self.multi_pipe is not None:
             self.multi_pipe.send({
-                "cmd":"report_communication",
-                "args":{
+                "cmd": "report_communication",
+                "args": {
                     "key": key
                 }
             })
@@ -300,12 +301,12 @@ class Main:
         self.backend.update_node_telemetry(Main.r_nodes[p_from], p_temp, p_batt, p_heading, "TELEMETRY")
         if self.multi_pipe is not None:
             self.multi_pipe.send({
-                'cmd':'status_update',
-                'args':{
+                'cmd': 'status_update',
+                'args': {
                     'node_id': p_from,
                     'bat': p_batt,
                     'temp': p_temp,
-                    'heading': p_heading 
+                    'heading': p_heading
                 }
             })
 

@@ -109,7 +109,8 @@ class Backend:
         virtual_base_distance = self.calculated_base_node.x  # TODO: actually calculate this
         real_base_distance = anchored_base.distanceTo(calculated_base)
         distance_scale = real_base_distance / virtual_base_distance
-        heading_offset = mean([anchored_base.initialBearingTo(calculated_base), calculated_base.initialBearingTo(anchored_base) - 180]) - 90
+        heading_offset = mean([anchored_base.initialBearingTo(calculated_base),
+                               calculated_base.initialBearingTo(anchored_base) - 180]) - 90
         # Transform node virtual coordinates
         new_x, new_y = self.rotate_point((node.x * distance_scale, node.y * distance_scale), heading_offset)
         n_d, n_a = math.sqrt(math.pow(new_x, 2) + math.pow(new_y, 2)), 90 - math.degrees(math.atan2(-new_y, new_x))

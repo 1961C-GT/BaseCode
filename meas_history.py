@@ -1,18 +1,18 @@
 import numpy
 import config
 
-class MeasHistory:
 
+class MeasHistory:
     MAX_MEAS = 20
-    MIN_DIST = 750    # mm
-    MAX_DIST = 500000 # mm
+    MIN_DIST = 750  # mm
+    MAX_DIST = 500000  # mm
 
     def __init__(self, key, max_meas=config.MAX_HISTORY, min_vals=5):
         self.key = key
         self.node1, self.node2 = self.key.split('-')
         self.meas_list = []
         self.added_meas = False
-        self.volitile_cycle = True
+        self.volatile_cycle = True
         self.max_meas = max_meas
         self.min_vals = min_vals
 
@@ -27,10 +27,10 @@ class MeasHistory:
 
     def new_cycle(self):
         # pass
-        if self.added_meas is False and self.volitile_cycle:
+        if self.added_meas is False and self.volatile_cycle:
             self.add_measurement(0, override=True)
         self.added_meas = False
-        self.volitile_cycle = not self.volitile_cycle
+        self.volatile_cycle = not self.volatile_cycle
 
     def add_measurement(self, dist, override=False):
         if not override and (dist < MeasHistory.MIN_DIST or dist > MeasHistory.MAX_DIST):
@@ -48,7 +48,7 @@ class MeasHistory:
             if dist != 0:
                 counter += 1
         if counter < self.min_vals:
-            return 0 # TODO: Remove when we do deviation?
+            return 0  # TODO: Remove when we do deviation?
         return sum_val / counter
 
     def get_std_deviation(self):
