@@ -15,14 +15,12 @@ MAX_HISTORY = 20  # How many historical cycles to feed to algorithm
 # Backend config #
 ##################
 
+ENABLE_BACKEND = False
 BACKEND_URL = "https://web.mnslac.xtriage.com/graphql"
 
 ###############
 # Site config #
 ###############
-
-BASE_1_GPS = 34.21797, -83.95238
-BASE_2_GPS = 34.21763, -83.95173
 
 AUTO_SETUP_BASE = True
 MANUAL_BASE_DIST = 47000  # Units in mm. Only used if AUTO_SETUP_BASE is False
@@ -35,3 +33,6 @@ NODES = {
     "4": {"name": "Node 3"},
     "5": {"name": "Node 4"}
 }
+
+ANCHORED_BASE_GPS = 34.21797, -83.95238
+CALCULATED_BASE_GPS = 34.21763, -83.95173

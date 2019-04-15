@@ -7,16 +7,14 @@ import threading
 from algorithms.helpers.node import Node
 import config
 
-ENABLE_BACKEND = True
-
 
 class Backend:
-    def __init__(self, base_1_id, base_2_id):
-        self.base_1_id = base_1_id
-        self.base_2_id = base_2_id
-        self.base_1_node: Node = None
-        self.base_2_node: Node = None
-        self.endpoint = HTTPEndpoint(config.BACKEND_URL) if ENABLE_BACKEND else lambda x: None
+    def __init__(self, anchored_base_id, calculated_base_id):
+        self.anchored_base_id = anchored_base_id
+        self.calculated_base_id = calculated_base_id
+        self.anchored_base_node: Node = None
+        self.calculated_base_node: Node = None
+        self.endpoint = HTTPEndpoint(config.BACKEND_URL) if config.ENABLE_BACKEND else lambda x: None
 
     def clear_nodes(self):
         mutation = \
@@ -49,11 +47,11 @@ class Backend:
             }
             """
 
-        if node.id == self.base_1_id:
-            self.base_1_node = node
+        if node.id == self.anchored_base_id:
+            self.anchored_base_node = node
             lat, lon = config.BASE_1_GPS
-        elif node.id == self.base_2_id:
-            self.base_2_node = node
+        elif node.id == self.calculated_base_id:
+            self.calculated_base_node = node
             # lat, lon = config.BASE_2_GPS  # could do this, but can also be sanity check for GPS translator
             lat, lon = self.translate_node_to_gps_coords(node)
         else:
@@ -103,22 +101,22 @@ class Backend:
         threading.Thread(target=lambda: self.endpoint(mutation)).start()
 
     def translate_node_to_gps_coords(self, node):
-        if not self.base_1_node or not self.base_2_node:
+        if not self.anchored_base_node or not self.calculated_base_node:
             return node.x, node.y
 
         # Set up coordinate transforms
-        base_1, base_2 = LatLon(*config.BASE_1_GPS), LatLon(*config.BASE_2_GPS)
-        virtual_base_distance = self.base_2_node.x  # TODO: actually calculate this
-        real_base_distance = base_1.distanceTo(base_2)
+        anchored_base, calculated_base = LatLon(*config.ANCHORED_BASE_GPS), LatLon(*config.CALCULATED_BASE_GPS)
+        virtual_base_distance = self.anchored_base_node.x  # TODO: actually calculate this
+        real_base_distance = anchored_base.distanceTo(calculated_base)
         distance_scale = real_base_distance / virtual_base_distance
-        heading_offset = mean([base_1.initialBearingTo(base_2), base_2.initialBearingTo(base_1) - 180]) - 90
-
+        heading_offset = mean([anchored_base.initialBearingTo(calculated_base), calculated_base.initialBearingTo(anchored_base) - 180]) - 90
+        twwqtw
         # Transform node virtual coordinates
         new_x, new_y = self.rotate_point((node.x * distance_scale, node.y * distance_scale), heading_offset)
         n_d, n_a = math.sqrt(math.pow(new_x, 2) + math.pow(new_y, 2)), 90 - math.degrees(math.atan2(-new_y, new_x))
 
         # Add to base_1 GPS coords
-        node_gps = base_1.destination(n_d, n_a)
+        node_gps = anchored_base.destination(n_d, n_a)
         return node_gps.latlon2(ndigits=6)
 
     @staticmethod

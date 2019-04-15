@@ -21,24 +21,38 @@ from meas_history import MeasHistory
 
 class Main:
 
-    def __init__(self, src=None, alg_name='multi_tri', multi_pipe=None):
+    def __init__(self, src=None, alg_name='multi_tri', multi_pipe=None, serial_pipe=None):
 
         self.PACKET_PROCESSORS = {"Range Packet": self.process_range, "Stats Packet": self.process_stats}
 
         # Communication with engineering display
         self.multi_pipe = multi_pipe
+        self.kill = False
+        self.log_file_name = None
 
         # Load from file if specified, otherwise serial
         if src:
             self.src = open(src)
             self.log_file = None
+            self.playback_pipe = serial_pipe
         else:
-            self.src = serial.Serial(config.SERIAL_PORT, config.SERIAL_BAUD)
-            self.log_file = open("log-{}.log".format(datetime.now().strftime("%Y%m%d-%H%M%S")), 'w')
-
-        # Thread for piping stdin to the serial port (for manually typing commands)
-        serial_sender = SerialSender(output_pipe=self.src)
-        serial_sender.start()
+            try:
+                self.src = serial.Serial(config.SERIAL_PORT, config.SERIAL_BAUD)
+                self.log_file_name = "log-{}.log".format(datetime.now().strftime("%Y%m%d-%H%M%S"))
+                self.log_file = open(self.log_file_name, 'w')
+                # Thread for piping stdin to the serial port (for manually typing commands)
+                serial_sender = SerialSender(output_pipe=self.src, multi_pipe=serial_pipe)
+                self.playback_pipe = None
+                serial_sender.start()
+            except serial.serialutil.SerialException as e:
+                self.kill = True
+                print(e)
+                if self.multi_pipe is not None:
+                    self.multi_pipe.send({
+                        'cmd': 'error',
+                        'type': 'no_serial'
+                    })
+                return
 
         # Load algorithm
         alg_module = importlib.import_module('algorithms.' + alg_name + '.' + alg_name)
@@ -65,6 +79,8 @@ class Main:
         self.node_list = Main.r_nodes
 
     def run(self):
+        if self.kill:
+            return
         self.multi_pipe.send("Hey, @realMainThread here. I’m alive.") if self.multi_pipe else None
 
         # Clear out the backend of stale data
@@ -74,8 +90,30 @@ class Main:
         packet_ctr = 0
         start_time = time.time()
 
+        paused = True
+        do = True
+        self.pause_time = 0
+
         self.src.readline()  # discard first (possibly incomplete) line
         for line in self.src:
+            if self.playback_pipe is not None:
+                while do or paused is True:
+                    do = False
+                    if self.playback_pipe.poll():
+                        msg = self.playback_pipe.recv()
+                        if type(msg) == dict and "cmd" in msg:
+                            if msg['cmd'] == "play":
+                                paused = False
+                            elif msg['cmd'] == "pause":
+                                paused = True
+                            elif msg['cmd'] == "set_speed" and 'speed' in msg:
+                                if float(msg['speed']) == 0:
+                                    self.pause_time = 0
+                                else:
+                                    self.pause_time = 1/float(msg['speed'])
+                    if paused:
+                        time.sleep(0.01)
+                do = True
             try:
                 # Try to decode 'bytes' from serial
                 line = line.decode("utf-8")
@@ -126,8 +164,6 @@ class Main:
 
     r_nodes = {}
     for node_id, details in config.NODES.items():
-        print(node_id)
-        print(details)
         if 'name' not in details:
             print('INVALID NODE SETUP: All nodes require the "name" attribute in config.py.')
             exit()
@@ -153,6 +189,9 @@ class Main:
     if ANCHORED_BASE is None or CALCULATED_BASE is None:
         print('INVALID NODE SETUP: Two base stations must be specified, and each needs to be "calculated" or "anchored" in type.')
         exit()
+
+    config.ANCHORED_BASE = ANCHORED_BASE
+    config.CALCULATED_BASE = CALCULATED_BASE
 
     r_current_cycle = None
     r_cycle_offset = None
@@ -237,10 +276,19 @@ class Main:
                 
                 if Main.AUTO_SETUP_BASE and name == Main.auto_base_meas_key and avg != 0:
                     Main.r_nodes[Main.CALCULATED_BASE].set_real_x_pos(avg)
-            
-            # time.sleep(0.25)
+
+            if self.pause_time > 0:
+                time.sleep(self.pause_time)
+        
 
         key = self.get_key_from_nodes(p_from, p_to)
+        if self.multi_pipe is not None:
+            self.multi_pipe.send({
+                "cmd":"report_communication",
+                "args":{
+                    "key": key
+                }
+            })
         self.history[key].add_measurement(p_range)
         Main.r_cycle_data.append([p_from, p_to, p_range, p_hops, p_seq])
 
@@ -250,15 +298,16 @@ class Main:
         p_temp = float(p_temp)
         p_batt = volts_to_percentage(float(p_batt))
         self.backend.update_node_telemetry(Main.r_nodes[p_from], p_temp, p_batt, p_heading, "TELEMETRY")
-        self.multi_pipe.send({
-            'cmd':'status_update',
-            'args':{
-                'node_id': p_from,
-                'bat': p_batt,
-                'temp': p_temp,
-                'heading': p_heading 
-            }
-        })
+        if self.multi_pipe is not None:
+            self.multi_pipe.send({
+                'cmd':'status_update',
+                'args':{
+                    'node_id': p_from,
+                    'bat': p_batt,
+                    'temp': p_temp,
+                    'heading': p_heading 
+                }
+            })
 
 
 #################
@@ -267,15 +316,34 @@ class Main:
 # Allows user input from the main console to be piped directly to the 
 # Serial interface.
 class SerialSender(threading.Thread):
-    def __init__(self, output_pipe):
+    def __init__(self, output_pipe, multi_pipe=None):
         super().__init__()
         self.output_pipe = output_pipe
+        self.multi_pipe = multi_pipe
 
     def run(self):
         # Infinite loop (kinda sucks)
         while True:
             # See if we have anything to read in
             try:
+                if self.multi_pipe is not None and self.multi_pipe.poll():
+                    msg = self.multi_pipe.recv()
+                    if type(msg) == dict and "cmd" in msg:
+                        if msg['cmd'] == "reset":
+                            print("Sending reset to base station")
+                            self.output_pipe.write(bytes(f"?R\n", 'utf-8'))
+                        elif msg['cmd'] == "sleep":
+                            if 'time' in msg:
+                                time_val = int(msg['time'])
+                                time_val_str = str(time_val)
+                                if len(time_val_str) > 5:
+                                    print("Sleep value too long!!")
+                                    return
+                                time_val_str = time_val_str.zfill(5)
+                                print("Sending sleep to base station with time of '{}'".format(time_val_str))
+                                self.output_pipe.write(bytes(f"?S{time_val_str}\n", 'utf-8'))
+                            else:
+                                print('ERROR: No sleep time mentioned!')
                 if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
                     # If we do, then write it directly to the serial interface
                     self.output_pipe.write(bytes(sys.stdin.readline(), 'utf-8'))
