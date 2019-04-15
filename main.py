@@ -99,20 +99,21 @@ class Main:
             if self.playback_pipe is not None:
                 while do or paused is True:
                     do = False
-                    if self.playback_pipe.poll():
-                        msg = self.playback_pipe.recv()
-                        if type(msg) == dict and "cmd" in msg:
-                            if msg['cmd'] == "play":
-                                paused = False
-                            elif msg['cmd'] == "pause":
-                                paused = True
-                            elif msg['cmd'] == "set_speed" and 'speed' in msg:
-                                if float(msg['speed']) == 0:
-                                    self.pause_time = 0
-                                else:
-                                    self.pause_time = 1 / float(msg['speed'])
+                    msg = None
                     if paused:
-                        time.sleep(0.1)
+                        msg = self.playback_pipe.recv()
+                    elif self.playback_pipe.poll():
+                        msg = self.playback_pipe.recv()
+                    if msg is not None and type(msg) == dict and "cmd" in msg:
+                        if msg['cmd'] == "play":
+                            paused = False
+                        elif msg['cmd'] == "pause":
+                            paused = True
+                        elif msg['cmd'] == "set_speed" and 'speed' in msg:
+                            if float(msg['speed']) == 0:
+                                self.pause_time = 0
+                            else:
+                                self.pause_time = 1 / float(msg['speed'])
                 do = True
             try:
                 # Try to decode 'bytes' from serial

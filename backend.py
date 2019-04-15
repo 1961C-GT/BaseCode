@@ -29,6 +29,9 @@ class Backend:
         if not node.is_resolved():
             return
 
+        # Access node cluster radius with node.get_guess_radius()
+        # If the value is -1, it means that we didn't use a cluster to resolve (used guessing instead).
+
         mutation = \
             """
             mutation {

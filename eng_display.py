@@ -426,7 +426,7 @@ class EngDisplay:
                     last_update = time.time()
                     # self.clear_canvas()
                     frame_end = False
-                elif time.time() - last_update > 0.01666666667:
+                elif time.time() - last_update > 0.03333333333:
                     if not self.update_frame():
                         return
                     last_update = time.time()
