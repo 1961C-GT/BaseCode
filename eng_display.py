@@ -154,8 +154,8 @@ class EngDisplay:
                 continue
             # Create the text objects for later use
             self.node_details_list[node_id] = {
-                'txt_id': self.details.create_text(20, y_pos, text=node_obj.id, fill=self.colors.text_details, font=font.Font(family='Courier New', size=12), anchor=tk.NW),
-                'name': node_obj.id,
+                'txt_id': self.details.create_text(20, y_pos, text=node_obj.name, fill=self.colors.text_details, font=font.Font(family='Courier New', size=12), anchor=tk.NW),
+                'name': node_obj.name,
                 'bat': 0,
                 'temp': 0,
                 'heading': 0,
