@@ -26,8 +26,8 @@ AUTO_SETUP_BASE = True
 MANUAL_BASE_DIST = 47000  # Units in mm. Only used if AUTO_SETUP_BASE is False
 
 NODES = {
-    "0": {"name": "Base 2", "is_base": True, "base_type": "calculated"},
-    "1": {"name": "Base 1", "is_base": True, "base_type": "anchored"},
+    "0": {"name": "Base 1", "is_base": True, "base_type": "anchored"},
+    "1": {"name": "Base 2", "is_base": True, "base_type": "calculated"},
     "2": {"name": "Node 1"},
     "3": {"name": "Node 2"},
     "4": {"name": "Node 3"},

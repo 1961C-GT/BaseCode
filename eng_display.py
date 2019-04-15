@@ -172,8 +172,8 @@ class EngDisplay:
         row_counter = 0
         for name in self.main.name_arr:
             id1, id2 = name.split('-')
-            n1 = self.main.node_list[id1].id
-            n2 = self.main.node_list[id2].id
+            n1 = self.main.node_list[id1].name
+            n2 = self.main.node_list[id2].name
             n1 = n1[0] + n1.split()[1]
             n2 = n2[0] + n2.split()[1]
             self.connection_list[name] = {

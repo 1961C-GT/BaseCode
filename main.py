@@ -169,7 +169,7 @@ class Main:
             exit()
             continue
         if 'is_base' in details and details['is_base'] is True:
-            r_nodes[node_id] = Node(details['name'], is_base=True)
+            r_nodes[node_id] = Node(node_id, details['name'], is_base=True)
             if 'base_type' in details:
                 if details['base_type'] == 'anchored':
                     if ANCHORED_BASE is None:
@@ -184,7 +184,7 @@ class Main:
                         print('INVALID NODE SETUP: Only one node may have the "calculated" attribute.')
                         exit()
         else:
-            r_nodes[node_id] = Node(details['name'])
+            r_nodes[node_id] = Node(node_id, details['name'])
         
     if ANCHORED_BASE is None or CALCULATED_BASE is None:
         print('INVALID NODE SETUP: Two base stations must be specified, and each needs to be "calculated" or "anchored" in type.')

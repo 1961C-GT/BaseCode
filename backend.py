@@ -106,7 +106,7 @@ class Backend:
 
         # Set up coordinate transforms
         anchored_base, calculated_base = LatLon(*config.ANCHORED_BASE_GPS), LatLon(*config.CALCULATED_BASE_GPS)
-        virtual_base_distance = self.anchored_base_node.x  # TODO: actually calculate this
+        virtual_base_distance = self.calculated_base_node.x  # TODO: actually calculate this
         real_base_distance = anchored_base.distanceTo(calculated_base)
         distance_scale = real_base_distance / virtual_base_distance
         heading_offset = mean([anchored_base.initialBearingTo(calculated_base), calculated_base.initialBearingTo(anchored_base) - 180]) - 90
