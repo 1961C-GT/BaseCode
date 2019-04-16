@@ -355,5 +355,19 @@ class SerialSender(threading.Thread):
                 return
 
 
+def main(arg):
+    src = None
+    if len(arg) > 0:
+        for a in arg:
+            if a == '-l' or a == '-light':
+                pass
+            elif src is None:
+                src = a
+            else:
+                print(f"Unknown command entry: {a}")
+                exit(1)
+    Main(src).run()
+
+
 if __name__ == "__main__":
-    Main(sys.argv[1] if len(sys.argv) == 2 else None).run()
+    main(sys.argv[1:])

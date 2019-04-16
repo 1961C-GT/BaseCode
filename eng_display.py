@@ -2,7 +2,6 @@
 
 import math
 import time
-from sys import platform
 
 import tkinter as tk
 from tkinter import font
@@ -16,10 +15,6 @@ import config
 
 class EngDisplay:
     def __init__(self, src=None, use_light_theme=False):
-        # Check if we're on macOS, first.
-        if platform != 'darwin':
-            print('This display only supports OSX platforms. Run \'main.py\' directly on other platforms.')
-            return
         self.colors = EngColors(use_dark=(not use_light_theme))
         self.parent_conn, self.child_conn = Pipe()
         self.parent_conn_serial_out, self.child_conn_serial_out = Pipe()
@@ -50,18 +45,6 @@ class EngDisplay:
 
     def create_eng_display(self):
         self.window = tk.Tk()
-        img = tk.Image("photo", file="icon.png")
-        try:
-            from Foundation import NSBundle
-            bundle = NSBundle.mainBundle()
-            if bundle:
-                info = bundle.localizedInfoDictionary() or bundle.infoDictionary()
-                if info and info['CFBundleName'] == 'Python':
-                    info['CFBundleName'] = "MNSLAC"
-        except:
-            print("NOTICE: To allow edits of Mac application names, install 'pyobjc' via 'pip3 install pyobjc'")
-
-        self.window.tk.call('wm', 'iconphoto', self.window._w, img)
         self.myframe = Frame(self.window)
         self.myframe.pack(fill=BOTH, expand=YES)
         w, h = self.window.winfo_screenwidth(), self.window.winfo_screenheight()
@@ -802,7 +785,7 @@ class ResizingCanvas(Canvas):
         self.move('obj-bg', x, y)
 
 
-if __name__ == "__main__":
+def main():
     if len(sys.argv) > 1:
         first = True
         use_light_theme = False
@@ -824,3 +807,7 @@ if __name__ == "__main__":
             EngDisplay(use_light_theme=use_light_theme)
     else:
         EngDisplay()
+
+
+if __name__ == "__main__":
+    main()
