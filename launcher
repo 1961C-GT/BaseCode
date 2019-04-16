@@ -98,12 +98,12 @@ if __name__ == "__main__":
     if not sys.platform.startswith('darwin'):
         print('GUI only supported on macOS platforms. Running main.py...')
         from main import main
-
         main(sys.argv[1:])
     else:
         my_env = os.environ.copy()
         my_env["no_proxy"] = "*"
         infoPlist_overrides = {'CFBundleName': 'MNSLAC'}
         myApp = TempApp(infoPlist_overrides, bundle_name='MNSLAC', app_icon='icns/icon.icns')
-        output = subprocess.check_output([myApp.path + '/Contents/MacOS/Python', './eng_display.py'] + sys.argv[1:],
-                                         env=my_env)
+        process = subprocess.Popen([myApp.path + '/Contents/MacOS/Python', './eng_display.py'] + sys.argv[1:],
+                                   env=my_env)
+        process.wait()
