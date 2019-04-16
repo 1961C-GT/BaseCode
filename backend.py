@@ -29,9 +29,6 @@ class Backend:
         if not node.is_resolved():
             return
 
-        # Access node cluster radius with node.get_guess_radius()
-        # If the value is -1, it means that we didn't use a cluster to resolve (used guessing instead).
-
         mutation = \
             """
             mutation {
@@ -42,6 +39,7 @@ class Backend:
                   position: {
                     lat: %(lat).6f
                     lon: %(lon).6f
+                    accuracy: %(accuracy).3f
                   }
                 }
               }) {
@@ -65,7 +63,8 @@ class Backend:
             'name': node.name,
             'type': 'BASE' if node.is_base else 'MOBILE',
             'lat': lat,
-            'lon': lon
+            'lon': lon,
+            'accuracy': node.get_guess_radius()
         }
         threading.Thread(target=lambda: self.endpoint(mutation)).start()
 
