@@ -14,12 +14,12 @@ import config
 
 
 class EngDisplay:
-    def __init__(self, src=None, use_light_theme=False):
+    def __init__(self, src=None, use_light_theme=False, repeat_log=False):
         self.colors = EngColors(use_dark=(not use_light_theme))
         self.parent_conn, self.child_conn = Pipe()
         self.parent_conn_serial_out, self.child_conn_serial_out = Pipe()
         self.data_src = src
-        self.main = Main(src, multi_pipe=self.child_conn, serial_pipe=self.child_conn_serial_out)
+        self.main = Main(src, multi_pipe=self.child_conn, serial_pipe=self.child_conn_serial_out, repeat_log=repeat_log)
         if src is None:
             self.using_serial = True
         else:
@@ -436,6 +436,8 @@ class EngDisplay:
                                 self.status_update(msg['args'])
                             elif msg['cmd'] == "report_communication":
                                 self.report_communication(msg['args'])
+                            elif msg['cmd'] == "clear_connection_list":
+                                self.clear_connection_list(msg['args'])
                             else:
                                 print(f"Unknown command: {msg['cmd']}")
                         else:
@@ -568,6 +570,10 @@ class EngDisplay:
             return args[val]
         else:
             return None
+
+    def clear_connection_list(self, args):
+        for key in self.connection_list.keys():
+            self.connection_list[key]['counter'] = 0
 
     def report_communication(self, args):
         key = self.get_val_from_args(args, "key")
@@ -789,6 +795,7 @@ def main():
     if len(sys.argv) > 1:
         first = True
         use_light_theme = False
+        repeat_log = False
         src = None
         for arg in sys.argv:
             if first:
@@ -796,15 +803,17 @@ def main():
                 continue
             if arg == '-l' or arg == '-light':
                 use_light_theme = True
+            elif arg == '-r' or arg == '-repeat':
+                repeat_log = True
             elif src is None:
                 src = arg
             else:
                 print(f"Unknown command entry: {arg}")
                 exit
         if src is not None:
-            EngDisplay(src=src, use_light_theme=use_light_theme)
+            EngDisplay(src=src, use_light_theme=use_light_theme, repeat_log=repeat_log)
         else:
-            EngDisplay(use_light_theme=use_light_theme)
+            EngDisplay(use_light_theme=use_light_theme, repeat_log=repeat_log)
     else:
         EngDisplay()
 

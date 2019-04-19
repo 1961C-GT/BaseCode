@@ -21,7 +21,7 @@ from meas_history import MeasHistory
 
 class Main:
 
-    def __init__(self, src=None, alg_name='multi_tri', multi_pipe=None, serial_pipe=None):
+    def __init__(self, src=None, alg_name='multi_tri', multi_pipe=None, serial_pipe=None, repeat_log=False):
 
         self.PACKET_PROCESSORS = {"Range Packet": self.process_range, "Stats Packet": self.process_stats}
 
@@ -29,13 +29,16 @@ class Main:
         self.multi_pipe = multi_pipe
         self.kill = False
         self.log_file_name = None
+        self.repeat_log = repeat_log
 
         # Load from file if specified, otherwise serial
         if src:
+            self.src_input = src
             self.src = open(src)
             self.log_file = None
             self.playback_pipe = serial_pipe
         else:
+            self.repeat_log = False
             try:
                 self.src = serial.Serial(config.SERIAL_PORT, config.SERIAL_BAUD)
                 self.log_file_name = "log-{}.log".format(datetime.now().strftime("%Y%m%d-%H%M%S"))
@@ -94,59 +97,71 @@ class Main:
         do = True
         self.pause_time = 0
 
-        self.src.readline()  # discard first (possibly incomplete) line
-        for line in self.src:
-            if self.playback_pipe is not None:
-                while do or paused is True:
-                    do = False
-                    msg = None
-                    if paused:
-                        msg = self.playback_pipe.recv()
-                    elif self.playback_pipe.poll():
-                        msg = self.playback_pipe.recv()
-                    if msg is not None and type(msg) == dict and "cmd" in msg:
-                        if msg['cmd'] == "play":
-                            paused = False
-                        elif msg['cmd'] == "pause":
-                            paused = True
-                        elif msg['cmd'] == "set_speed" and 'speed' in msg:
-                            if float(msg['speed']) == 0:
-                                self.pause_time = 0
-                            else:
-                                self.pause_time = 1 / float(msg['speed'])
-                do = True
-            try:
-                # Try to decode 'bytes' from serial
-                line = line.decode("utf-8")
-            except AttributeError:
-                # Probably already a 'str' from file
-                pass
+        while do or self.repeat_log is True:
+            self.src.readline()  # discard first (possibly incomplete) line
+            for line in self.src:
+                if self.playback_pipe is not None:
 
-            # Write log, flush to make sure we got it down
-            if self.log_file:
-                self.log_file.write(line)
-                self.log_file.flush()
+                    while do or paused is True:
+                        do = False
+                        msg = None
+                        if paused:
+                            msg = self.playback_pipe.recv()
+                        elif self.playback_pipe.poll():
+                            msg = self.playback_pipe.recv()
+                        if msg is not None and type(msg) == dict and "cmd" in msg:
+                            if msg['cmd'] == "play":
+                                paused = False
+                            elif msg['cmd'] == "pause":
+                                paused = True
+                            elif msg['cmd'] == "set_speed" and 'speed' in msg:
+                                if float(msg['speed']) == 0:
+                                    self.pause_time = 0
+                                else:
+                                    self.pause_time = 1 / float(msg['speed'])
+                    do = True
+                try:
+                    # Try to decode 'bytes' from serial
+                    line = line.decode("utf-8")
+                except AttributeError:
+                    # Probably already a 'str' from file
+                    pass
 
-            tmp = line.strip().split("|")
-            line_ctr += 1
+                # Write log, flush to make sure we got it down
+                if self.log_file:
+                    self.log_file.write(line)
+                    self.log_file.flush()
 
-            # Make sure we have a valid packet
-            if len(tmp) != 2:
-                continue
+                tmp = line.strip().split("|")
+                line_ctr += 1
 
-            # Check packet type
-            packet_type = tmp[0].strip()
-            if packet_type not in self.PACKET_PROCESSORS.keys():
-                continue
-            packet_ctr += 1
+                # Make sure we have a valid packet
+                if len(tmp) != 2:
+                    continue
 
-            # Clean up packet contents
-            packet_contents = tmp[1].strip().split(',')
-            for i in range(len(packet_contents)):
-                packet_contents[i] = packet_contents[i].strip().split(":")[1]
+                # Check packet type
+                packet_type = tmp[0].strip()
+                if packet_type not in self.PACKET_PROCESSORS.keys():
+                    continue
+                packet_ctr += 1
 
-            # Pass to packet processor for processing
-            self.PACKET_PROCESSORS[packet_type](packet_contents)
+                # Clean up packet contents
+                packet_contents = tmp[1].strip().split(',')
+                for i in range(len(packet_contents)):
+                    packet_contents[i] = packet_contents[i].strip().split(":")[1]
+
+                # Pass to packet processor for processing
+                self.PACKET_PROCESSORS[packet_type](packet_contents)
+
+            if self.repeat_log:
+                self.multi_pipe.send({
+                    'cmd':'clear_connection_list',
+                    'args': {}
+                })
+                self.src = open(self.src_input)
+            else:
+                do = False
+            
 
         print()
         print("Processed {} lines ({} packets) in {} secs".format(line_ctr, packet_ctr, time.time() - start_time))
@@ -357,16 +372,19 @@ class SerialSender(threading.Thread):
 
 def main(arg):
     src = None
+    repeat = False
     if len(arg) > 0:
         for a in arg:
             if a == '-l' or a == '-light':
                 pass
+            elif a == '-r' or a == '-repeat':
+                repeat = True
             elif src is None:
                 src = a
             else:
                 print(f"Unknown command entry: {a}")
                 exit(1)
-    Main(src).run()
+    Main(src, repeat_log=repeat).run()
 
 
 if __name__ == "__main__":
