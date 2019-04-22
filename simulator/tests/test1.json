@@ -1,0 +1,66 @@
+{
+  "nodeList": [
+    {
+      "id": 0,
+      "x": 0,
+      "y": 0,
+      "range": 75
+    },
+    {
+      "id": 1,
+      "x": 40,
+      "y": 0,
+      "range": 75
+    },
+    {
+      "id": 2,
+      "x": 62,
+      "y": 45,
+      "range": 75
+    },
+    {
+      "id": 3,
+      "x": 20,
+      "y": 20,
+      "range": 75
+    }
+  ],
+  "taskList": [
+    {
+      "nodeIdx": 2,
+      "vx": 0.2,
+      "vy": 0,
+      "cycle": 0
+    },
+    {
+      "nodeIdx": 2,
+      "vx": 0,
+      "vy": 0,
+      "cycle": 75
+    },
+    {
+      "nodeIdx": 2,
+      "vx": -0.2,
+      "vy": 0.2,
+      "cycle": 100
+    },
+    {
+      "nodeIdx": 2,
+      "vx": 0,
+      "vy": 0,
+      "cycle": 125
+    },
+    {
+      "nodeIdx": 3,
+      "vx": 0,
+      "vy": 0.6,
+      "cycle": 150
+    },
+    {
+      "nodeIdx": 3,
+      "vx": 0,
+      "vy": 0,
+      "cycle": 200
+    }
+  ]
+}
