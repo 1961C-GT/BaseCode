@@ -47,13 +47,13 @@ if __name__ == "__main__":
             taskList.append(Task(nodeList[t['nodeIdx']], t['vx'], t['vy'], t['cycle']))
 
     #### Main Loop
-    f = open("tests/" + trialName + ".log","w+")
-    while cycle <= numCycles:
-        dumpStatus(f, nodeList, cycle)
-        applyTasks(taskList, cycle)
-        stepNodes(nodeList, 1)
-        dumpRanges(f, nodeList, cycle);
-        cycle += 1
+    with open("tests/" + trialName + ".log","w+") as f:
+        while cycle <= numCycles:
+            dumpStatus(f, nodeList, cycle)
+            applyTasks(taskList, cycle)
+            stepNodes(nodeList, 1)
+            dumpRanges(f, nodeList, cycle);
+            cycle += 1
 
-    # Close the file
-    f.close()
+        # Close the file
+        f.close()
