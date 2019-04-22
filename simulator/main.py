@@ -31,12 +31,10 @@ if __name__ == "__main__":
     cycle = 0
     nodeList = []
     taskList = []
+    numCycles = 0
 
     # Trail Name (input and output file names)
     trialName = "test1"
-
-    # Number of cycles to execute
-    numCycles = 250
 
     #### Build node and task lists from json
     with open("tests/" + trialName + ".json") as json_file:
@@ -45,6 +43,8 @@ if __name__ == "__main__":
             nodeList.append(Node(n['id'], n['x'], n['y'], n['range']))
         for t in data['taskList']:
             taskList.append(Task(nodeList[t['nodeIdx']], t['vx'], t['vy'], t['cycle']))
+
+        numCycles = data['length']
 
     #### Main Loop
     with open("tests/" + trialName + ".log","w+") as f:
