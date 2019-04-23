@@ -501,7 +501,7 @@ class EngDisplay:
                                                          justify=tk.LEFT, angle=rotation)
             # Create the line
             self.cur_line = event.widget.create_line(self.start_pos[0], self.start_pos[1], x,
-                                                     y, fill=self.colors.main_line, dash=(3, 5), arrow=tk.BOTH)
+                                                     y, fill=self.colors.measure_line_color, dash=self.colors.measure_line_dash, arrow=tk.BOTH, width=self.colors.measure_line_width)
 
     def shrink(self, scale, x=None, y=None):
         if x is None or y is None:
@@ -769,7 +769,7 @@ class ResizingCanvas(Canvas):
         old_height = self.height
         self.width = event.width
         self.height = event.height
-        # resize the canvas 
+        # resize the canvas
         self.scale("bg", 0, 0, wscale, hscale)
         self.canvas_shift(0, 0)
         if self.callback is not None:
