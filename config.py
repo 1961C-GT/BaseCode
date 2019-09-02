@@ -28,10 +28,10 @@ MANUAL_BASE_DIST = 47000  # Units in mm. Only used if AUTO_SETUP_BASE is False
 NODES = {
     "0": {"name": "Base 1", "is_base": True, "base_type": "anchored"},
     "1": {"name": "Base 2", "is_base": True, "base_type": "calculated"},
-    "2": {"name": "Node 1"},
-    "3": {"name": "Node 2"},
-    "4": {"name": "Node 3"},
-    "5": {"name": "Node 4"}
+    "2": {"name": "Yassine 0"},  # N1
+    "3": {"name": "Sai 0"},  # N2
+    "4": {"name": "Node 3"},  # N3
+    "5": {"name": "Norris 0"}   # N4
 }
 
 ANCHORED_BASE_GPS = 34.21797, -83.95238
